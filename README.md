@@ -54,17 +54,17 @@ ChooseMeal/
 └─ gradle/ wrapper
 ```
 
-## 运行环境
-
-- Windows / macOS / Linux
-- JDK 17+
-- Android SDK（`platform-tools`、`build-tools`、`platforms;android-35`）
-
 ## 对使用者
 
 在`Releases`中下载并安装最新`apk`文件，即可正常使用
 
 ## 对开发者
+
+### 运行环境
+
+- Windows / macOS / Linux
+- JDK 17+
+- Android SDK（`platform-tools`、`build-tools`、`platforms;android-35`）
 
 ### 快速开始
 
@@ -119,4 +119,3 @@ Release 包路径：
 ## 备注
 
 - 本项目默认用于学习和个人使用。
-- 如用于长期分发，请替换为你自己的正式签名证书与发布流程。
