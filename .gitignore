@@ -1,0 +1,15 @@
+﻿.gradle/
+build/
+.idea/
+local.properties
+*.iml
+/captures/
+.externalNativeBuild/
+.cxx/
+.keystore/
+keystore.properties
+app/release/
+app/build/
+.codex-iteration/
+.tooling/
+*.hprof
