@@ -79,8 +79,11 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     val decisionResult by viewModel.decisionResult.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val isRolling by viewModel.isRolling.collectAsStateWithLifecycle()
+    val animationToken by viewModel.animationToken.collectAsStateWithLifecycle()
     val randomCafeteriaFilter by viewModel.randomCafeteriaFilter.collectAsStateWithLifecycle()
     val randomFloorFilter by viewModel.randomFloorFilter.collectAsStateWithLifecycle()
+    val randomPriceRangeFilter by viewModel.randomPriceRangeFilter.collectAsStateWithLifecycle()
+    val randomFlavorFilter by viewModel.randomFlavorFilter.collectAsStateWithLifecycle()
     val manageCafeteria by viewModel.manageCafeteriaId.collectAsStateWithLifecycle()
     val manageFloor by viewModel.manageFloorId.collectAsStateWithLifecycle()
     val communityConfigs by viewModel.communityConfigs.collectAsStateWithLifecycle()
@@ -128,12 +131,17 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 options = filteredOptions,
                 selectedCafeteriaId = randomCafeteriaFilter,
                 selectedFloorId = randomFloorFilter,
+                selectedPriceRangeFilter = randomPriceRangeFilter,
+                selectedFlavorFilter = randomFlavorFilter,
                 decisionResult = decisionResult,
                 isRolling = isRolling,
+                animationToken = animationToken,
                 animationsEnabled = settings.animationsEnabled,
                 hapticsEnabled = settings.hapticsEnabled,
                 onSelectCafeteria = viewModel::setRandomCafeteriaFilter,
                 onSelectFloor = viewModel::setRandomFloorFilter,
+                onSelectPriceRange = viewModel::setRandomPriceRangeFilter,
+                onSelectFlavor = viewModel::setRandomFlavorFilter,
                 onSpin = viewModel::spin,
                 onDrawPick = viewModel::chooseDrawOption,
             )

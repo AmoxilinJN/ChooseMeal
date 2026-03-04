@@ -7,6 +7,7 @@ import com.choosemeal.app.domain.model.DecisionMode
 import com.choosemeal.app.domain.model.DecisionResult
 import com.choosemeal.app.domain.model.DecisionScope
 import com.choosemeal.app.domain.model.MealOption
+import com.choosemeal.app.domain.model.matchesScope
 import kotlinx.coroutines.flow.first
 import kotlin.random.Random
 
@@ -45,7 +46,7 @@ class DefaultRandomEngine(
 
     private suspend fun pick(scope: DecisionScope, mode: DecisionMode): DecisionResult? {
         val options = repository.observeEnabledOptions().first()
-            .filterByScope(scope)
+            .filter { it.matchesScope(scope) }
 
         if (options.isEmpty()) return null
 
@@ -78,14 +79,6 @@ class DefaultRandomEngine(
         )
         settingsStore.appendHistoryKey(result.historyKey, policy.recentWindowSize.coerceAtLeast(1))
         return result
-    }
-
-    private fun List<MealOption>.filterByScope(scope: DecisionScope): List<MealOption> {
-        return filter { option ->
-            val cafeteriaMatch = scope.cafeteriaId == null || option.cafeteriaId == scope.cafeteriaId
-            val floorMatch = scope.floorId == null || option.floorId == scope.floorId
-            cafeteriaMatch && floorMatch
-        }
     }
 
     private fun MealOption.historyKey(): String = "${cafeteriaId}:${floorId}:${mealId}"

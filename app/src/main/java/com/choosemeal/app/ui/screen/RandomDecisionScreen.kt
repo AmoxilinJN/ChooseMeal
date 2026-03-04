@@ -69,7 +69,9 @@ import com.choosemeal.app.data.local.entity.CafeteriaEntity
 import com.choosemeal.app.data.local.entity.FloorEntity
 import com.choosemeal.app.domain.model.DecisionMode
 import com.choosemeal.app.domain.model.DecisionResult
+import com.choosemeal.app.domain.model.FlavorFilter
 import com.choosemeal.app.domain.model.MealOption
+import com.choosemeal.app.domain.model.PriceRangeFilter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -84,12 +86,17 @@ fun RandomDecisionScreen(
     options: List<MealOption>,
     selectedCafeteriaId: Long?,
     selectedFloorId: Long?,
+    selectedPriceRangeFilter: PriceRangeFilter,
+    selectedFlavorFilter: FlavorFilter,
     decisionResult: DecisionResult?,
     isRolling: Boolean,
+    animationToken: Long,
     animationsEnabled: Boolean,
     hapticsEnabled: Boolean,
     onSelectCafeteria: (Long?) -> Unit,
     onSelectFloor: (Long?) -> Unit,
+    onSelectPriceRange: (PriceRangeFilter) -> Unit,
+    onSelectFlavor: (FlavorFilter) -> Unit,
     onSpin: () -> Unit,
     onDrawPick: (MealOption) -> Unit,
 ) {
@@ -157,6 +164,23 @@ fun RandomDecisionScreen(
                     entries = listOf(null to "全部楼层") + floors.map { it.id to it.name },
                     onSelect = onSelectFloor,
                 )
+                FilterDropDown(
+                    title = "预期价格",
+                    selectedText = selectedPriceRangeFilter.label,
+                    entries = PriceRangeFilter.entries.map { it to it.label },
+                    onSelect = onSelectPriceRange,
+                )
+                FilterDropDown(
+                    title = "口味偏好",
+                    selectedText = selectedFlavorFilter.label,
+                    entries = FlavorFilter.entries.map { it to it.label },
+                    onSelect = onSelectFlavor,
+                )
+                Text(
+                    text = "提示：在伙食标签中可写入“￥18、微辣”等信息，以提升筛选准确度。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
         }
 
@@ -179,6 +203,7 @@ fun RandomDecisionScreen(
             SpinPanel(
                 options = options,
                 decisionResult = decisionResult,
+                animationToken = animationToken,
                 animationsEnabled = animationsEnabled,
                 onSpin = {
                     if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -205,15 +230,20 @@ fun RandomDecisionScreen(
 private fun SpinPanel(
     options: List<MealOption>,
     decisionResult: DecisionResult?,
+    animationToken: Long,
     animationsEnabled: Boolean,
     onSpin: () -> Unit,
     isRolling: Boolean,
 ) {
     var targetRotation by remember { mutableFloatStateOf(0f) }
+    var lastHandledToken by remember { mutableLongStateOf(animationToken) }
     val wheelOptions = remember(options) { options }
     val optionNames = wheelOptions.map { it.mealName }.ifEmpty { listOf("暂无可选") }
 
-    LaunchedEffect(decisionResult?.timestamp, optionNames.size) {
+    LaunchedEffect(animationToken, optionNames.size) {
+        if (animationToken == 0L || animationToken == lastHandledToken) return@LaunchedEffect
+        lastHandledToken = animationToken
+
         val result = decisionResult ?: return@LaunchedEffect
         if (result.mode != DecisionMode.SPIN) return@LaunchedEffect
         if (wheelOptions.isEmpty()) return@LaunchedEffect
@@ -568,11 +598,11 @@ private fun ResultPanel(decisionResult: DecisionResult?) {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun FilterDropDown(
+private fun <T> FilterDropDown(
     title: String,
     selectedText: String,
-    entries: List<Pair<Long?, String>>,
-    onSelect: (Long?) -> Unit,
+    entries: List<Pair<T, String>>,
+    onSelect: (T) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

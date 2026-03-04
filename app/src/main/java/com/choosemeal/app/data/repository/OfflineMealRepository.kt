@@ -118,16 +118,16 @@ class OfflineMealRepository(
             val b2 = floorDao.upsert(FloorEntity(cafeteriaId = cafeteriaB, name = "2楼", sortOrder = 2))
             val c1 = floorDao.upsert(FloorEntity(cafeteriaId = cafeteriaC, name = "1楼", sortOrder = 1))
 
-            mealDao.upsert(MealEntity(floorId = a1, name = "兰州拉面", tags = "面食"))
-            mealDao.upsert(MealEntity(floorId = a1, name = "黄焖鸡米饭", tags = "米饭"))
-            mealDao.upsert(MealEntity(floorId = a2, name = "麻辣香锅", tags = "重口味"))
-            mealDao.upsert(MealEntity(floorId = a2, name = "木桶饭", tags = "下饭"))
-            mealDao.upsert(MealEntity(floorId = b1, name = "砂锅", tags = "热乎"))
-            mealDao.upsert(MealEntity(floorId = b1, name = "自选快餐", tags = "均衡"))
-            mealDao.upsert(MealEntity(floorId = b2, name = "重庆小面", tags = "辣"))
-            mealDao.upsert(MealEntity(floorId = b2, name = "煲仔饭", tags = "香"))
-            mealDao.upsert(MealEntity(floorId = c1, name = "牛肉面", tags = "清真"))
-            mealDao.upsert(MealEntity(floorId = c1, name = "大盘鸡", tags = "清真"))
+            mealDao.upsert(MealEntity(floorId = a1, name = "兰州拉面", tags = "面食,清淡,￥14"))
+            mealDao.upsert(MealEntity(floorId = a1, name = "黄焖鸡米饭", tags = "米饭,适中,￥18"))
+            mealDao.upsert(MealEntity(floorId = a2, name = "麻辣香锅", tags = "重口味,辣,￥26"))
+            mealDao.upsert(MealEntity(floorId = a2, name = "木桶饭", tags = "下饭,适中,￥20"))
+            mealDao.upsert(MealEntity(floorId = b1, name = "砂锅", tags = "热乎,清淡,￥17"))
+            mealDao.upsert(MealEntity(floorId = b1, name = "自选快餐", tags = "均衡,￥16"))
+            mealDao.upsert(MealEntity(floorId = b2, name = "重庆小面", tags = "辣,￥15"))
+            mealDao.upsert(MealEntity(floorId = b2, name = "煲仔饭", tags = "香,适中,￥19"))
+            mealDao.upsert(MealEntity(floorId = c1, name = "牛肉面", tags = "清真,清淡,￥16"))
+            mealDao.upsert(MealEntity(floorId = c1, name = "大盘鸡", tags = "清真,重口味,￥28"))
         }
     }
 }

@@ -314,6 +314,11 @@ private fun MealEditDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("伙食名") })
                 OutlinedTextField(value = tags, onValueChange = { tags = it }, label = { Text("标签") })
+                Text(
+                    text = "可选格式示例：￥18, 微辣, 面食。用于决策页价格/口味筛选。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
         },
         confirmButton = {

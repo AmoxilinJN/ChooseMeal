@@ -62,56 +62,56 @@
       "id": 1001,
       "floorId": 101,
       "name": "黄焖鸡米饭",
-      "tags": "快餐,盖饭",
+      "tags": "快餐,适中,￥18",
       "enabled": true
     },
     {
       "id": 1002,
       "floorId": 101,
       "name": "兰州牛肉面",
-      "tags": "面食",
+      "tags": "面食,清淡,￥15",
       "enabled": true
     },
     {
       "id": 1003,
       "floorId": 102,
       "name": "麻辣烫",
-      "tags": "粉面,微辣",
+      "tags": "粉面,微辣,￥17",
       "enabled": true
     },
     {
       "id": 1004,
       "floorId": 201,
       "name": "自选小碗菜",
-      "tags": "自选,家常",
+      "tags": "自选,均衡,￥20",
       "enabled": true
     },
     {
       "id": 1005,
       "floorId": 201,
       "name": "重庆小面",
-      "tags": "面食,辣",
+      "tags": "面食,辣,￥16",
       "enabled": true
     },
     {
       "id": 1006,
       "floorId": 202,
       "name": "砂锅米线",
-      "tags": "粉面",
+      "tags": "粉面,清淡,￥19",
       "enabled": true
     },
     {
       "id": 1007,
       "floorId": 301,
       "name": "鸡公煲",
-      "tags": "香锅,重口味",
+      "tags": "香锅,重口味,￥28",
       "enabled": true
     },
     {
       "id": 1008,
       "floorId": 301,
       "name": "轻食沙拉",
-      "tags": "轻食",
+      "tags": "轻食,清淡,￥24",
       "enabled": true
     }
   ]

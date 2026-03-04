@@ -13,7 +13,10 @@ import com.choosemeal.app.data.preferences.UserSettings
 import com.choosemeal.app.domain.model.DecisionMode
 import com.choosemeal.app.domain.model.DecisionResult
 import com.choosemeal.app.domain.model.DecisionScope
+import com.choosemeal.app.domain.model.FlavorFilter
 import com.choosemeal.app.domain.model.MealOption
+import com.choosemeal.app.domain.model.PriceRangeFilter
+import com.choosemeal.app.domain.model.matchesScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,12 +27,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 data class SharePayload(
     val uri: Uri,
     val fileName: String,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as ChooseMealApplication).container
     private val repository = container.repository
@@ -55,6 +60,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _randomFloorFilter = MutableStateFlow<Long?>(null)
     val randomFloorFilter = _randomFloorFilter.asStateFlow()
+
+    private val _randomPriceRangeFilter = MutableStateFlow(PriceRangeFilter.ANY)
+    val randomPriceRangeFilter = _randomPriceRangeFilter.asStateFlow()
+
+    private val _randomFlavorFilter = MutableStateFlow(FlavorFilter.ANY)
+    val randomFlavorFilter = _randomFlavorFilter.asStateFlow()
 
     val randomFloors = _randomCafeteriaFilter.flatMapLatest { repository.observeFloors(it) }.stateIn(
         scope = viewModelScope,
@@ -96,12 +107,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         enabledOptions,
         _randomCafeteriaFilter,
         _randomFloorFilter,
-    ) { options, cafeteriaFilter, floorFilter ->
-        options.filter { option ->
-            val cafeteriaMatch = cafeteriaFilter == null || option.cafeteriaId == cafeteriaFilter
-            val floorMatch = floorFilter == null || option.floorId == floorFilter
-            cafeteriaMatch && floorMatch
-        }
+        _randomPriceRangeFilter,
+        _randomFlavorFilter,
+    ) { options, cafeteriaFilter, floorFilter, priceRangeFilter, flavorFilter ->
+        val scope = DecisionScope(
+            cafeteriaId = cafeteriaFilter,
+            floorId = floorFilter,
+            priceRangeFilter = priceRangeFilter,
+            flavorFilter = flavorFilter,
+        )
+        options.filter { option -> option.matchesScope(scope) }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -192,6 +207,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _randomFloorFilter.value = id
     }
 
+    fun setRandomPriceRangeFilter(filter: PriceRangeFilter) {
+        _randomPriceRangeFilter.value = filter
+    }
+
+    fun setRandomFlavorFilter(filter: FlavorFilter) {
+        _randomFlavorFilter.value = filter
+    }
+
     fun setManageCafeteria(id: Long?) {
         _manageCafeteriaId.value = id
         _manageFloorId.value = null
@@ -234,11 +257,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_isRolling.value) return
         viewModelScope.launch {
             _isRolling.value = true
-            _animationToken.value = System.currentTimeMillis()
+            if (mode == DecisionMode.SPIN) {
+                _animationToken.value = System.currentTimeMillis()
+            }
 
             val scope = DecisionScope(
                 cafeteriaId = _randomCafeteriaFilter.value,
                 floorId = _randomFloorFilter.value,
+                priceRangeFilter = _randomPriceRangeFilter.value,
+                flavorFilter = _randomFlavorFilter.value,
             )
 
             val result = when (mode) {
