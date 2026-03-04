@@ -3,14 +3,20 @@
   "cafeterias": [
     {
       "id": 1,
-      "name": "竹园食堂",
+      "name": "云天苑食堂",
       "sortOrder": 1,
       "enabled": true
     },
     {
       "id": 2,
-      "name": "海棠食堂",
+      "name": "翱翔食堂",
       "sortOrder": 2,
+      "enabled": true
+    },
+    {
+      "id": 3,
+      "name": "星天苑美食广场",
+      "sortOrder": 3,
       "enabled": true
     }
   ],
@@ -35,13 +41,27 @@
       "name": "1楼",
       "sortOrder": 1,
       "enabled": true
+    },
+    {
+      "id": 202,
+      "cafeteriaId": 2,
+      "name": "2楼",
+      "sortOrder": 2,
+      "enabled": true
+    },
+    {
+      "id": 301,
+      "cafeteriaId": 3,
+      "name": "1楼",
+      "sortOrder": 1,
+      "enabled": true
     }
   ],
   "meals": [
     {
       "id": 1001,
       "floorId": 101,
-      "name": "西红柿鸡蛋盖饭",
+      "name": "黄焖鸡米饭",
       "tags": "快餐,盖饭",
       "enabled": true
     },
@@ -55,22 +75,43 @@
     {
       "id": 1003,
       "floorId": 102,
-      "name": "小碗菜",
-      "tags": "自选",
+      "name": "麻辣烫",
+      "tags": "粉面,微辣",
       "enabled": true
     },
     {
       "id": 1004,
       "floorId": 201,
-      "name": "砂锅米线",
-      "tags": "粉面",
+      "name": "自选小碗菜",
+      "tags": "自选,家常",
       "enabled": true
     },
     {
       "id": 1005,
       "floorId": 201,
-      "name": "麻辣香锅",
-      "tags": "重口味",
+      "name": "重庆小面",
+      "tags": "面食,辣",
+      "enabled": true
+    },
+    {
+      "id": 1006,
+      "floorId": 202,
+      "name": "砂锅米线",
+      "tags": "粉面",
+      "enabled": true
+    },
+    {
+      "id": 1007,
+      "floorId": 301,
+      "name": "鸡公煲",
+      "tags": "香锅,重口味",
+      "enabled": true
+    },
+    {
+      "id": 1008,
+      "floorId": 301,
+      "name": "轻食沙拉",
+      "tags": "轻食",
       "enabled": true
     }
   ]

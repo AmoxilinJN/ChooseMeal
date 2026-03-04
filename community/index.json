@@ -3,16 +3,16 @@
   "updatedAt": "2026-03-04",
   "configs": [
     {
-      "id": "xidian-university-main-campus",
-      "schoolName": "西安电子科技大学",
+      "id": "northwestern-polytechnical-university-changan-campus",
+      "schoolName": "西北工业大学（长安校区）",
       "city": "西安",
       "region": "CN-SN",
-      "file": "community/configs/xidian-university-main-campus.json",
+      "file": "community/configs/northwestern-polytechnical-university-changan-campus.json",
       "author": "@AmoxilinJN",
       "updatedAt": "2026-03-04",
       "tags": [
         "示例",
-        "主校区"
+        "长安校区"
       ]
     }
   ]

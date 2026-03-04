@@ -29,15 +29,20 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,7 +63,6 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.choosemeal.app.data.local.entity.CafeteriaEntity
@@ -71,7 +75,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.random.Random
 
 @Composable
 fun RandomDecisionScreen(
@@ -83,7 +86,6 @@ fun RandomDecisionScreen(
     selectedFloorId: Long?,
     decisionResult: DecisionResult?,
     isRolling: Boolean,
-    animationToken: Long,
     animationsEnabled: Boolean,
     hapticsEnabled: Boolean,
     onSelectCafeteria: (Long?) -> Unit,
@@ -565,6 +567,7 @@ private fun ResultPanel(decisionResult: DecisionResult?) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun FilterDropDown(
     title: String,
     selectedText: String,
@@ -573,19 +576,68 @@ private fun FilterDropDown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, style = MaterialTheme.typography.labelLarge)
-        OutlinedButton(onClick = { expanded = true }) {
-            Text(selectedText)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            entries.forEach { (id, label) ->
-                DropdownMenuItem(
-                    text = { Text(label) },
-                    onClick = {
-                        expanded = false
-                        onSelect(id)
-                    },
-                )
+        Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.outline)
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+        ) {
+            TextField(
+                value = selectedText,
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.FilterList,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                ),
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                entries.forEach { (id, label) ->
+                    val isSelected = label == selectedText
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = label,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                        },
+                        trailingIcon = {
+                            if (isSelected) {
+                                Text(
+                                    text = "当前",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        },
+                        onClick = {
+                            expanded = false
+                            onSelect(id)
+                        },
+                    )
+                }
             }
         }
     }

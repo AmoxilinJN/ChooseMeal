@@ -79,7 +79,6 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     val decisionResult by viewModel.decisionResult.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val isRolling by viewModel.isRolling.collectAsStateWithLifecycle()
-    val animationToken by viewModel.animationToken.collectAsStateWithLifecycle()
     val randomCafeteriaFilter by viewModel.randomCafeteriaFilter.collectAsStateWithLifecycle()
     val randomFloorFilter by viewModel.randomFloorFilter.collectAsStateWithLifecycle()
     val manageCafeteria by viewModel.manageCafeteriaId.collectAsStateWithLifecycle()
@@ -131,7 +130,6 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 selectedFloorId = randomFloorFilter,
                 decisionResult = decisionResult,
                 isRolling = isRolling,
-                animationToken = animationToken,
                 animationsEnabled = settings.animationsEnabled,
                 hapticsEnabled = settings.hapticsEnabled,
                 onSelectCafeteria = viewModel::setRandomCafeteriaFilter,

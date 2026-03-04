@@ -31,7 +31,7 @@ python scripts/validate_community_configs.py --project-root .
 ## 文件命名建议
 
 - 使用小写英文 + 连字符：`<school>-<campus>.json`
-- 示例：`xidian-university-main-campus.json`
+- 示例：`northwestern-polytechnical-university-changan-campus.json`
 
 ## 质量要求
 
