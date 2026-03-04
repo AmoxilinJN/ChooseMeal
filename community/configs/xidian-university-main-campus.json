@@ -1,0 +1,77 @@
+﻿{
+  "version": 1,
+  "cafeterias": [
+    {
+      "id": 1,
+      "name": "竹园食堂",
+      "sortOrder": 1,
+      "enabled": true
+    },
+    {
+      "id": 2,
+      "name": "海棠食堂",
+      "sortOrder": 2,
+      "enabled": true
+    }
+  ],
+  "floors": [
+    {
+      "id": 101,
+      "cafeteriaId": 1,
+      "name": "1楼",
+      "sortOrder": 1,
+      "enabled": true
+    },
+    {
+      "id": 102,
+      "cafeteriaId": 1,
+      "name": "2楼",
+      "sortOrder": 2,
+      "enabled": true
+    },
+    {
+      "id": 201,
+      "cafeteriaId": 2,
+      "name": "1楼",
+      "sortOrder": 1,
+      "enabled": true
+    }
+  ],
+  "meals": [
+    {
+      "id": 1001,
+      "floorId": 101,
+      "name": "西红柿鸡蛋盖饭",
+      "tags": "快餐,盖饭",
+      "enabled": true
+    },
+    {
+      "id": 1002,
+      "floorId": 101,
+      "name": "兰州牛肉面",
+      "tags": "面食",
+      "enabled": true
+    },
+    {
+      "id": 1003,
+      "floorId": 102,
+      "name": "小碗菜",
+      "tags": "自选",
+      "enabled": true
+    },
+    {
+      "id": 1004,
+      "floorId": 201,
+      "name": "砂锅米线",
+      "tags": "粉面",
+      "enabled": true
+    },
+    {
+      "id": 1005,
+      "floorId": 201,
+      "name": "麻辣香锅",
+      "tags": "重口味",
+      "enabled": true
+    }
+  ]
+}

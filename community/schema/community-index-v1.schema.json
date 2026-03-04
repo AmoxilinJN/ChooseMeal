@@ -1,0 +1,44 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/AmoxilinJN/ChooseMeal/main/community/schema/community-index-v1.schema.json",
+  "title": "ChooseMeal Community Index v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updatedAt", "configs"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "updatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "configs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/configEntry"
+      }
+    }
+  },
+  "$defs": {
+    "configEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schoolName", "city", "file", "author", "updatedAt", "tags"],
+      "properties": {
+        "id": { "type": "string", "minLength": 3 },
+        "schoolName": { "type": "string", "minLength": 1 },
+        "city": { "type": "string", "minLength": 1 },
+        "region": { "type": "string" },
+        "file": { "type": "string", "pattern": "^community/configs/.+\\.json$" },
+        "author": { "type": "string", "minLength": 1 },
+        "updatedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

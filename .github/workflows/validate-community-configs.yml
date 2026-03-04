@@ -1,0 +1,31 @@
+﻿name: validate-community-configs
+
+on:
+  pull_request:
+    paths:
+      - 'community/**'
+      - 'scripts/validate_community_configs.py'
+      - '.github/workflows/validate-community-configs.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'community/**'
+      - 'scripts/validate_community_configs.py'
+      - '.github/workflows/validate-community-configs.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate community configs
+        run: |
+          python scripts/validate_community_configs.py --project-root .

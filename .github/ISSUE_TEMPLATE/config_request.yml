@@ -1,0 +1,51 @@
+﻿name: 请求新增学校配置
+description: 你所在学校还没有配置，发起需求征集
+title: "[Config Request] <学校名称>"
+labels:
+  - community-config
+  - request
+body:
+  - type: markdown
+    attributes:
+      value: |
+        维护者和社区同学会根据需求热度优先补充配置。
+
+  - type: input
+    id: school_name
+    attributes:
+      label: 学校名称
+      placeholder: 例如：XX大学
+    validations:
+      required: true
+
+  - type: input
+    id: city
+    attributes:
+      label: 城市
+      placeholder: 例如：北京
+    validations:
+      required: true
+
+  - type: textarea
+    id: cafeteria_info
+    attributes:
+      label: 你已知的食堂信息（可选）
+      description: 可填写食堂名、楼层、典型窗口，便于志愿者录入
+      placeholder: 例如：一食堂 1 楼快餐/面食，二食堂 2 楼清真窗口
+
+  - type: input
+    id: volunteer
+    attributes:
+      label: 你是否愿意参与录入
+      description: 填写 yes / no；如果愿意，维护者会 @ 你
+      placeholder: yes
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交前检查
+      options:
+        - label: 我已确认在 `community/index.json` 中还没有该学校
+          required: true

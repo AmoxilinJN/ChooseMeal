@@ -1,0 +1,69 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/AmoxilinJN/ChooseMeal/main/community/schema/choosemeal-config-v1.schema.json",
+  "title": "ChooseMeal Config v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "cafeterias", "floors", "meals"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "cafeterias": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cafeteria"
+      }
+    },
+    "floors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/floor"
+      }
+    },
+    "meals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/meal"
+      }
+    }
+  },
+  "$defs": {
+    "cafeteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "sortOrder", "enabled"],
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string", "minLength": 1 },
+        "sortOrder": { "type": "integer" },
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "floor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cafeteriaId", "name", "sortOrder", "enabled"],
+      "properties": {
+        "id": { "type": "integer" },
+        "cafeteriaId": { "type": "integer" },
+        "name": { "type": "string", "minLength": 1 },
+        "sortOrder": { "type": "integer" },
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "meal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "floorId", "name", "tags", "enabled"],
+      "properties": {
+        "id": { "type": "integer" },
+        "floorId": { "type": "integer" },
+        "name": { "type": "string", "minLength": 1 },
+        "tags": { "type": "string" },
+        "enabled": { "type": "boolean" }
+      }
+    }
+  }
+}

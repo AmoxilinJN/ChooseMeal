@@ -12,6 +12,21 @@
 - `导入导出`：支持 JSON 备份与恢复。
 - `离线可用`：无需联网即可运行。
 
+## 社区配置共享
+
+支持通过 GitHub 社区共享“学校食堂配置文件”，让后来者可直接导入使用。
+
+- 配置索引：`community/index.json`
+- 配置目录：`community/configs/*.json`（可直接在 App 中导入）
+- 贡献入口：Issue / PR（仓库内已提供模板）
+- 自动校验：PR 会触发 `validate-community-configs` 工作流，检查结构与引用有效性
+
+新用户导入步骤：
+
+1. 在仓库中查看 `community/index.json`，找到你的学校。
+2. 下载对应 JSON 配置文件到手机本地。
+3. 打开 App -> `导入导出` -> `导入 JSON`，选择文件完成导入。
+
 ## 技术栈
 
 - Kotlin
@@ -31,6 +46,7 @@ ChooseMeal/
 │  │  ├─ domain/      # 随机决策模型与引擎
 │  │  └─ ui/          # Compose 页面与主题
 │  └─ src/test/       # 单元测试
+├─ community/         # 社区共享配置中心
 ├─ docs/
 │  ├─ BUILD_AND_RUN.md
 │  ├─ JSON_SCHEMA.md
@@ -89,6 +105,10 @@ Release 包路径：
 - `meals[]`
 
 详见：`docs/JSON_SCHEMA.md`
+
+社区共享规范见：
+
+- `community/README.md`
 
 ## 备注
 
