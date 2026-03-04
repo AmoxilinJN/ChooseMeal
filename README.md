@@ -60,7 +60,13 @@ ChooseMeal/
 - JDK 17+
 - Android SDK（`platform-tools`、`build-tools`、`platforms;android-35`）
 
-## 快速开始
+## 对使用者
+
+在`Releases`中下载并安装最新`apk`文件，即可正常使用
+
+## 对开发者
+
+### 快速开始
 
 ```powershell
 cd Your\Path\To\ChooseMeal
@@ -71,14 +77,14 @@ Debug 包路径：
 
 - `app/build/outputs/apk/debug/app-debug.apk`
 
-## 质量检查
+### 质量检查
 
 ```powershell
 .\gradlew.bat testDebugUnitTest
 .\gradlew.bat lintDebug
 ```
 
-## Release 打包
+### Release 打包
 
 项目支持本地临时签名打包：
 
@@ -95,7 +101,7 @@ Release 包路径：
 - `keystore.properties.example`
 - `docs/RELEASE_SIGNING.md`
 
-## JSON 数据格式
+### JSON 数据格式
 
 导入导出使用 `v1` 合约，字段包括：
 
