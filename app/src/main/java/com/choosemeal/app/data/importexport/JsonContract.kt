@@ -33,7 +33,9 @@ data class JsonMeal(
     val id: Long,
     val floorId: Long,
     val name: String,
-    val tags: String,
+    val tags: String = "",
+    val flavor: String = "",
+    val priceYuan: Int? = null,
     val enabled: Boolean,
 )
 

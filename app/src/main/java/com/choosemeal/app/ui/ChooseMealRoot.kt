@@ -75,6 +75,7 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     val allFloors by viewModel.allFloors.collectAsStateWithLifecycle()
     val manageFloors by viewModel.manageFloors.collectAsStateWithLifecycle()
     val manageMeals by viewModel.manageMeals.collectAsStateWithLifecycle()
+    val flavorOptions by viewModel.flavorOptions.collectAsStateWithLifecycle()
     val filteredOptions by viewModel.filteredOptions.collectAsStateWithLifecycle()
     val decisionResult by viewModel.decisionResult.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -82,7 +83,8 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     val animationToken by viewModel.animationToken.collectAsStateWithLifecycle()
     val randomCafeteriaFilter by viewModel.randomCafeteriaFilter.collectAsStateWithLifecycle()
     val randomFloorFilter by viewModel.randomFloorFilter.collectAsStateWithLifecycle()
-    val randomPriceRangeFilter by viewModel.randomPriceRangeFilter.collectAsStateWithLifecycle()
+    val randomPriceMinInput by viewModel.randomPriceMinInput.collectAsStateWithLifecycle()
+    val randomPriceMaxInput by viewModel.randomPriceMaxInput.collectAsStateWithLifecycle()
     val randomFlavorFilter by viewModel.randomFlavorFilter.collectAsStateWithLifecycle()
     val manageCafeteria by viewModel.manageCafeteriaId.collectAsStateWithLifecycle()
     val manageFloor by viewModel.manageFloorId.collectAsStateWithLifecycle()
@@ -131,8 +133,10 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 options = filteredOptions,
                 selectedCafeteriaId = randomCafeteriaFilter,
                 selectedFloorId = randomFloorFilter,
-                selectedPriceRangeFilter = randomPriceRangeFilter,
-                selectedFlavorFilter = randomFlavorFilter,
+                selectedPriceMinInput = randomPriceMinInput,
+                selectedPriceMaxInput = randomPriceMaxInput,
+                flavorOptions = flavorOptions,
+                selectedFlavor = randomFlavorFilter,
                 decisionResult = decisionResult,
                 isRolling = isRolling,
                 animationToken = animationToken,
@@ -140,7 +144,8 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 hapticsEnabled = settings.hapticsEnabled,
                 onSelectCafeteria = viewModel::setRandomCafeteriaFilter,
                 onSelectFloor = viewModel::setRandomFloorFilter,
-                onSelectPriceRange = viewModel::setRandomPriceRangeFilter,
+                onSelectPriceMinInput = viewModel::setRandomPriceMinInput,
+                onSelectPriceMaxInput = viewModel::setRandomPriceMaxInput,
                 onSelectFlavor = viewModel::setRandomFlavorFilter,
                 onSpin = viewModel::spin,
                 onDrawPick = viewModel::chooseDrawOption,
@@ -154,6 +159,7 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 selectedFloorId = manageFloor,
                 floors = manageFloors,
                 meals = manageMeals,
+                flavorOptions = flavorOptions,
                 onSelectCafeteria = viewModel::setManageCafeteria,
                 onSelectFloor = viewModel::setManageFloor,
                 onUpsertCafeteria = viewModel::upsertCafeteria,

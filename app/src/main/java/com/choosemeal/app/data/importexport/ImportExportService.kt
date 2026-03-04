@@ -33,7 +33,6 @@ class LocalImportExportService(
     private val json = Json {
         ignoreUnknownKeys = true
         prettyPrint = true
-        prettyPrintIndent = "  "
     }
 
     override suspend fun exportToJson(uri: Uri): ExportSummary {
@@ -98,6 +97,8 @@ class LocalImportExportService(
                             floorId = it.floorId,
                             name = it.name,
                             tags = it.tags,
+                            flavor = it.flavor,
+                            priceYuan = it.priceYuan,
                             enabled = it.enabled,
                         )
                     },
@@ -184,6 +185,8 @@ class LocalImportExportService(
                     floorId = it.floorId,
                     name = it.name,
                     tags = it.tags,
+                    flavor = it.flavor,
+                    priceYuan = it.priceYuan,
                     enabled = it.enabled,
                 )
             },

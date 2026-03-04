@@ -41,7 +41,9 @@ interface MealDao {
             f.name AS floorName,
             m.id AS mealId,
             m.name AS mealName,
-            m.tags AS mealTags
+            m.tags AS mealTags,
+            m.flavor AS mealFlavor,
+            m.priceYuan AS mealPriceYuan
         FROM cafeterias c
         INNER JOIN floors f ON f.cafeteriaId = c.id
         INNER JOIN meals m ON m.floorId = f.id

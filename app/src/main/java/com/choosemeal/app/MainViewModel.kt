@@ -13,9 +13,7 @@ import com.choosemeal.app.data.preferences.UserSettings
 import com.choosemeal.app.domain.model.DecisionMode
 import com.choosemeal.app.domain.model.DecisionResult
 import com.choosemeal.app.domain.model.DecisionScope
-import com.choosemeal.app.domain.model.FlavorFilter
 import com.choosemeal.app.domain.model.MealOption
-import com.choosemeal.app.domain.model.PriceRangeFilter
 import com.choosemeal.app.domain.model.matchesScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,10 +60,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _randomFloorFilter = MutableStateFlow<Long?>(null)
     val randomFloorFilter = _randomFloorFilter.asStateFlow()
 
-    private val _randomPriceRangeFilter = MutableStateFlow(PriceRangeFilter.ANY)
-    val randomPriceRangeFilter = _randomPriceRangeFilter.asStateFlow()
+    private val _randomPriceMinInput = MutableStateFlow("")
+    val randomPriceMinInput = _randomPriceMinInput.asStateFlow()
 
-    private val _randomFlavorFilter = MutableStateFlow(FlavorFilter.ANY)
+    private val _randomPriceMaxInput = MutableStateFlow("")
+    val randomPriceMaxInput = _randomPriceMaxInput.asStateFlow()
+
+    private val _randomFlavorFilter = MutableStateFlow<String?>(null)
     val randomFlavorFilter = _randomFlavorFilter.asStateFlow()
 
     val randomFloors = _randomCafeteriaFilter.flatMapLatest { repository.observeFloors(it) }.stateIn(
@@ -78,6 +80,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList(),
     )
+
+    val flavorOptions = repository.observeMeals(null)
+        .map { meals ->
+            meals.map { it.flavor.trim() }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .sorted()
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
 
     private val _manageCafeteriaId = MutableStateFlow<Long?>(null)
     val manageCafeteriaId = _manageCafeteriaId.asStateFlow()
@@ -103,18 +118,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         initialValue = emptyList(),
     )
 
+    private val randomPriceRangeInputs = combine(
+        _randomPriceMinInput,
+        _randomPriceMaxInput,
+    ) { minInput, maxInput ->
+        minInput to maxInput
+    }
+
     val filteredOptions: StateFlow<List<MealOption>> = combine(
         enabledOptions,
         _randomCafeteriaFilter,
         _randomFloorFilter,
-        _randomPriceRangeFilter,
+        randomPriceRangeInputs,
         _randomFlavorFilter,
-    ) { options, cafeteriaFilter, floorFilter, priceRangeFilter, flavorFilter ->
+    ) { options, cafeteriaFilter, floorFilter, priceRangeInputs, flavorFilter ->
+        val (priceMinInput, priceMaxInput) = priceRangeInputs
         val scope = DecisionScope(
             cafeteriaId = cafeteriaFilter,
             floorId = floorFilter,
-            priceRangeFilter = priceRangeFilter,
-            flavorFilter = flavorFilter,
+            priceMinYuan = parsePriceInput(priceMinInput),
+            priceMaxYuan = parsePriceInput(priceMaxInput),
+            flavor = flavorFilter,
         )
         options.filter { option -> option.matchesScope(scope) }
     }.stateIn(
@@ -207,12 +231,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _randomFloorFilter.value = id
     }
 
-    fun setRandomPriceRangeFilter(filter: PriceRangeFilter) {
-        _randomPriceRangeFilter.value = filter
+    fun setRandomPriceMinInput(input: String) {
+        _randomPriceMinInput.value = input.filter(Char::isDigit).take(4)
     }
 
-    fun setRandomFlavorFilter(filter: FlavorFilter) {
-        _randomFlavorFilter.value = filter
+    fun setRandomPriceMaxInput(input: String) {
+        _randomPriceMaxInput.value = input.filter(Char::isDigit).take(4)
+    }
+
+    fun setRandomFlavorFilter(filter: String?) {
+        _randomFlavorFilter.value = filter?.trim().takeUnless { it.isNullOrBlank() }
     }
 
     fun setManageCafeteria(id: Long?) {
@@ -257,15 +285,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_isRolling.value) return
         viewModelScope.launch {
             _isRolling.value = true
-            if (mode == DecisionMode.SPIN) {
-                _animationToken.value = System.currentTimeMillis()
-            }
 
             val scope = DecisionScope(
                 cafeteriaId = _randomCafeteriaFilter.value,
                 floorId = _randomFloorFilter.value,
-                priceRangeFilter = _randomPriceRangeFilter.value,
-                flavorFilter = _randomFlavorFilter.value,
+                priceMinYuan = parsePriceInput(_randomPriceMinInput.value),
+                priceMaxYuan = parsePriceInput(_randomPriceMaxInput.value),
+                flavor = _randomFlavorFilter.value,
             )
 
             val result = when (mode) {
@@ -279,6 +305,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _decisionResult.value = result
                 val currentSettings = settings.first()
                 if (currentSettings.animationsEnabled && mode == DecisionMode.SPIN) {
+                    _animationToken.value = maxOf(System.currentTimeMillis(), _animationToken.value + 1L)
                     delay(1650)
                 }
                 _isRolling.value = false
@@ -429,5 +456,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _communityImportingId.value = null
         }
+    }
+
+    private fun parsePriceInput(input: String): Int? {
+        if (input.isBlank()) return null
+        return input.filter(Char::isDigit).toIntOrNull()
     }
 }

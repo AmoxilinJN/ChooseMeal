@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -33,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.choosemeal.app.data.local.entity.CafeteriaEntity
 import com.choosemeal.app.data.local.entity.FloorEntity
@@ -47,6 +49,7 @@ fun DataManagementScreen(
     selectedFloorId: Long?,
     floors: List<FloorEntity>,
     meals: List<MealEntity>,
+    flavorOptions: List<String>,
     onSelectCafeteria: (Long?) -> Unit,
     onSelectFloor: (Long?) -> Unit,
     onUpsertCafeteria: (CafeteriaEntity) -> Unit,
@@ -91,10 +94,20 @@ fun DataManagementScreen(
             title = if (mealEdit?.id == 0L) "新增伙食" else "编辑伙食",
             initialName = mealEdit?.name.orEmpty(),
             initialTags = mealEdit?.tags.orEmpty(),
+            initialFlavor = mealEdit?.flavor.orEmpty(),
+            initialPriceYuan = mealEdit?.priceYuan,
+            flavorOptions = flavorOptions,
             onDismiss = { mealEdit = null },
-            onConfirm = { newName, tags ->
+            onConfirm = { newName, tags, flavor, priceYuan ->
                 val base = mealEdit ?: return@MealEditDialog
-                onUpsertMeal(base.copy(name = newName, tags = tags))
+                onUpsertMeal(
+                    base.copy(
+                        name = newName,
+                        tags = tags,
+                        flavor = flavor,
+                        priceYuan = priceYuan,
+                    ),
+                )
                 mealEdit = null
             },
         )
@@ -169,7 +182,15 @@ fun DataManagementScreen(
 
         DataSectionCard(title = "伙食", onAdd = {
             val floorId = selectedFloorId ?: return@DataSectionCard
-            mealEdit = MealEntity(id = 0, floorId = floorId, name = "", tags = "", enabled = true)
+            mealEdit = MealEntity(
+                id = 0,
+                floorId = floorId,
+                name = "",
+                tags = "",
+                flavor = "",
+                priceYuan = null,
+                enabled = true,
+            )
         }) {
             SelectionDropDown(
                 title = "当前楼层",
@@ -181,7 +202,7 @@ fun DataManagementScreen(
             meals.forEach { meal ->
                 EditableRow(
                     title = meal.name,
-                    subtitle = meal.tags.ifBlank { "无标签" },
+                    subtitle = buildMealSubtitle(meal),
                     enabled = meal.enabled,
                     onToggle = { onUpsertMeal(meal.copy(enabled = it)) },
                     onEdit = { mealEdit = meal },
@@ -301,11 +322,31 @@ private fun MealEditDialog(
     title: String,
     initialName: String,
     initialTags: String,
+    initialFlavor: String,
+    initialPriceYuan: Int?,
+    flavorOptions: List<String>,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit,
+    onConfirm: (String, String, String, Int?) -> Unit,
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
     var tags by remember(initialTags) { mutableStateOf(initialTags) }
+    val normalizedFlavors = remember(flavorOptions) {
+        flavorOptions.map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }
+    var selectedFlavor by remember(initialFlavor, normalizedFlavors) {
+        mutableStateOf(initialFlavor.takeIf { it in normalizedFlavors }.orEmpty())
+    }
+    var useCustomFlavor by remember(initialFlavor, normalizedFlavors) {
+        mutableStateOf(initialFlavor.isNotBlank() && initialFlavor !in normalizedFlavors)
+    }
+    var customFlavor by remember(initialFlavor) {
+        mutableStateOf(if (initialFlavor.isNotBlank() && initialFlavor !in normalizedFlavors) initialFlavor else "")
+    }
+    var flavorMenuExpanded by remember { mutableStateOf(false) }
+    var priceText by remember(initialPriceYuan) { mutableStateOf(initialPriceYuan?.toString().orEmpty()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -313,9 +354,59 @@ private fun MealEditDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("伙食名") })
+                Text("口味", style = MaterialTheme.typography.labelLarge)
+                OutlinedButton(onClick = { flavorMenuExpanded = true }) {
+                    val flavorText = when {
+                        useCustomFlavor -> "自定义：${customFlavor.ifBlank { "未填写" }}"
+                        selectedFlavor.isNotBlank() -> selectedFlavor
+                        else -> "未设置"
+                    }
+                    Text(flavorText)
+                }
+                DropdownMenu(expanded = flavorMenuExpanded, onDismissRequest = { flavorMenuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text("未设置") },
+                        onClick = {
+                            flavorMenuExpanded = false
+                            useCustomFlavor = false
+                            selectedFlavor = ""
+                        },
+                    )
+                    normalizedFlavors.forEach { flavor ->
+                        DropdownMenuItem(
+                            text = { Text(flavor) },
+                            onClick = {
+                                flavorMenuExpanded = false
+                                useCustomFlavor = false
+                                selectedFlavor = flavor
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("自定义口味") },
+                        onClick = {
+                            flavorMenuExpanded = false
+                            useCustomFlavor = true
+                        },
+                    )
+                }
+                if (useCustomFlavor) {
+                    OutlinedTextField(
+                        value = customFlavor,
+                        onValueChange = { customFlavor = it },
+                        label = { Text("自定义口味") },
+                    )
+                }
+                OutlinedTextField(
+                    value = priceText,
+                    onValueChange = { priceText = it.filter(Char::isDigit).take(4) },
+                    label = { Text("价格") },
+                    prefix = { Text("￥") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
                 OutlinedTextField(value = tags, onValueChange = { tags = it }, label = { Text("标签") })
                 Text(
-                    text = "可选格式示例：￥18, 微辣, 面食。用于决策页价格/口味筛选。",
+                    text = "标签用于补充说明（如面食、清真）。价格和口味将用于筛选。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
@@ -324,10 +415,20 @@ private fun MealEditDialog(
         confirmButton = {
             TextButton(onClick = {
                 if (name.isNotBlank()) {
-                    onConfirm(name.trim(), tags.trim())
+                    val flavor = if (useCustomFlavor) customFlavor.trim() else selectedFlavor.trim()
+                    onConfirm(name.trim(), tags.trim(), flavor, priceText.toIntOrNull())
                 }
             }) { Text("确定") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
+}
+
+private fun buildMealSubtitle(meal: MealEntity): String {
+    val chunks = buildList {
+        if (meal.flavor.isNotBlank()) add("口味 ${meal.flavor}")
+        if (meal.priceYuan != null) add("￥${meal.priceYuan}")
+        if (meal.tags.isNotBlank()) add(meal.tags)
+    }
+    return chunks.joinToString(" · ").ifBlank { "无附加信息" }
 }

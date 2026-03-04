@@ -8,4 +8,6 @@ data class MealTripleEntity(
     val mealId: Long,
     val mealName: String,
     val mealTags: String,
+    val mealFlavor: String,
+    val mealPriceYuan: Int?,
 )

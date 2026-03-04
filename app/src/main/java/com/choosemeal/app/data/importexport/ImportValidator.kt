@@ -24,6 +24,9 @@ object ImportValidator {
         if (!jsonDoc.meals.all { floorIds.contains(it.floorId) }) {
             return ValidationResult(valid = false, message = "meal.floorId 存在无效引用")
         }
+        if (!jsonDoc.meals.all { (it.priceYuan ?: 0) >= 0 }) {
+            return ValidationResult(valid = false, message = "meal.priceYuan 必须为非负数")
+        }
 
         return ValidationResult(valid = true, message = "ok")
     }

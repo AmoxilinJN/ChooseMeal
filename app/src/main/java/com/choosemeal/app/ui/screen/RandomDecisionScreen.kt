@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -37,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -63,15 +65,14 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.choosemeal.app.data.local.entity.CafeteriaEntity
 import com.choosemeal.app.data.local.entity.FloorEntity
 import com.choosemeal.app.domain.model.DecisionMode
 import com.choosemeal.app.domain.model.DecisionResult
-import com.choosemeal.app.domain.model.FlavorFilter
 import com.choosemeal.app.domain.model.MealOption
-import com.choosemeal.app.domain.model.PriceRangeFilter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -86,8 +87,10 @@ fun RandomDecisionScreen(
     options: List<MealOption>,
     selectedCafeteriaId: Long?,
     selectedFloorId: Long?,
-    selectedPriceRangeFilter: PriceRangeFilter,
-    selectedFlavorFilter: FlavorFilter,
+    selectedPriceMinInput: String,
+    selectedPriceMaxInput: String,
+    flavorOptions: List<String>,
+    selectedFlavor: String?,
     decisionResult: DecisionResult?,
     isRolling: Boolean,
     animationToken: Long,
@@ -95,8 +98,9 @@ fun RandomDecisionScreen(
     hapticsEnabled: Boolean,
     onSelectCafeteria: (Long?) -> Unit,
     onSelectFloor: (Long?) -> Unit,
-    onSelectPriceRange: (PriceRangeFilter) -> Unit,
-    onSelectFlavor: (FlavorFilter) -> Unit,
+    onSelectPriceMinInput: (String) -> Unit,
+    onSelectPriceMaxInput: (String) -> Unit,
+    onSelectFlavor: (String?) -> Unit,
     onSpin: () -> Unit,
     onDrawPick: (MealOption) -> Unit,
 ) {
@@ -165,19 +169,19 @@ fun RandomDecisionScreen(
                     onSelect = onSelectFloor,
                 )
                 FilterDropDown(
-                    title = "预期价格",
-                    selectedText = selectedPriceRangeFilter.label,
-                    entries = PriceRangeFilter.entries.map { it to it.label },
-                    onSelect = onSelectPriceRange,
-                )
-                FilterDropDown(
                     title = "口味偏好",
-                    selectedText = selectedFlavorFilter.label,
-                    entries = FlavorFilter.entries.map { it to it.label },
+                    selectedText = selectedFlavor ?: "全部口味",
+                    entries = listOf(null to "全部口味") + flavorOptions.map { it to it },
                     onSelect = onSelectFlavor,
                 )
+                PriceRangeInputRow(
+                    minInput = selectedPriceMinInput,
+                    maxInput = selectedPriceMaxInput,
+                    onMinChange = onSelectPriceMinInput,
+                    onMaxChange = onSelectPriceMaxInput,
+                )
                 Text(
-                    text = "提示：在伙食标签中可写入“￥18、微辣”等信息，以提升筛选准确度。",
+                    text = "提示：口味和金额来自伙食独立字段，金额输入数字即可。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
@@ -240,13 +244,13 @@ private fun SpinPanel(
     val wheelOptions = remember(options) { options }
     val optionNames = wheelOptions.map { it.mealName }.ifEmpty { listOf("暂无可选") }
 
-    LaunchedEffect(animationToken, optionNames.size) {
+    LaunchedEffect(animationToken, decisionResult?.timestamp, optionNames.size) {
         if (animationToken == 0L || animationToken == lastHandledToken) return@LaunchedEffect
-        lastHandledToken = animationToken
 
         val result = decisionResult ?: return@LaunchedEffect
         if (result.mode != DecisionMode.SPIN) return@LaunchedEffect
         if (wheelOptions.isEmpty()) return@LaunchedEffect
+        lastHandledToken = animationToken
 
         val index = wheelOptions.indexOfFirst {
             it.mealName == result.meal &&
@@ -455,6 +459,38 @@ private fun SpinPanel(
 }
 
 @Composable
+private fun PriceRangeInputRow(
+    minInput: String,
+    maxInput: String,
+    onMinChange: (String) -> Unit,
+    onMaxChange: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("预期价格区间", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.outline)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(
+                value = minInput,
+                onValueChange = { onMinChange(it) },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                label = { Text("最低价") },
+                prefix = { Text("￥") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            OutlinedTextField(
+                value = maxInput,
+                onValueChange = { onMaxChange(it) },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                label = { Text("最高价") },
+                prefix = { Text("￥") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+        }
+    }
+}
+
+@Composable
 private fun CandidatePanel(
     options: List<MealOption>,
     animationsEnabled: Boolean,
@@ -549,6 +585,17 @@ private fun CandidatePanel(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.outline,
                                 )
+                                val detail = buildList {
+                                    if (candidate.mealFlavor.isNotBlank()) add(candidate.mealFlavor)
+                                    if (candidate.mealPriceYuan != null) add("￥${candidate.mealPriceYuan}")
+                                }.joinToString(" · ")
+                                if (detail.isNotBlank()) {
+                                    Text(
+                                        detail,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.outline,
+                                    )
+                                }
                             }
                             Text(
                                 text = if (picked) "已选" else "点击选择",
