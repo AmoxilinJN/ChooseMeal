@@ -1,6 +1,8 @@
 ﻿package com.choosemeal.app
 
 import android.app.Application
+import com.choosemeal.app.data.importexport.CommunityConfigService
+import com.choosemeal.app.data.importexport.GithubCommunityConfigService
 import com.choosemeal.app.data.importexport.ImportExportService
 import com.choosemeal.app.data.importexport.LocalImportExportService
 import com.choosemeal.app.data.local.ChooseMealDatabase
@@ -23,6 +25,7 @@ class AppContainer(application: Application) {
         repository = repository,
         settingsStore = settingsStore,
     )
+    val communityConfigService: CommunityConfigService = GithubCommunityConfigService()
     val importExportService: ImportExportService = LocalImportExportService(
         context = application,
         repository = repository,

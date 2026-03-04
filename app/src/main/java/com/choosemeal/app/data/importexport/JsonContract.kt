@@ -1,5 +1,6 @@
 ﻿package com.choosemeal.app.data.importexport
 
+import android.net.Uri
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -52,6 +53,16 @@ data class ImportSummary(
 data class ExportSummary(
     val success: Boolean,
     val message: String,
+    val cafeteriaCount: Int = 0,
+    val floorCount: Int = 0,
+    val mealCount: Int = 0,
+)
+
+data class ShareSummary(
+    val success: Boolean,
+    val message: String,
+    val uri: Uri? = null,
+    val fileName: String = "",
     val cafeteriaCount: Int = 0,
     val floorCount: Int = 0,
     val mealCount: Int = 0,

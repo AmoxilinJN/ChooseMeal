@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.choosemeal.app.data.importexport.CommunityConfigEntry
 import com.choosemeal.app.data.importexport.ImportSummary
 import com.choosemeal.app.data.local.entity.CafeteriaEntity
 import com.choosemeal.app.data.local.entity.FloorEntity
@@ -24,12 +25,18 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+data class SharePayload(
+    val uri: Uri,
+    val fileName: String,
+)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as ChooseMealApplication).container
     private val repository = container.repository
     private val randomEngine = container.randomEngine
     private val settingsStore = container.settingsStore
     private val importExportService = container.importExportService
+    private val communityConfigService = container.communityConfigService
 
     val settings: StateFlow<UserSettings> = settingsStore.settings.stateIn(
         scope = viewModelScope,
@@ -113,6 +120,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
+    private val _sharePayload = MutableStateFlow<SharePayload?>(null)
+    val sharePayload = _sharePayload.asStateFlow()
+
+    private val _communityConfigs = MutableStateFlow<List<CommunityConfigEntry>>(emptyList())
+    val communityConfigs = _communityConfigs.asStateFlow()
+
+    private val _communityUpdatedAt = MutableStateFlow("")
+    val communityUpdatedAt = _communityUpdatedAt.asStateFlow()
+
+    private val _isCommunityLoading = MutableStateFlow(false)
+    val isCommunityLoading = _isCommunityLoading.asStateFlow()
+
+    private val _communityImportingId = MutableStateFlow<String?>(null)
+    val communityImportingId = _communityImportingId.asStateFlow()
+
+    val communityIssueUrl: String = communityConfigService.issueTemplateUrl()
+    val communityRepoUrl: String = communityConfigService.repositoryUrl()
+
     init {
         viewModelScope.launch {
             repository.seedIfEmpty()
@@ -178,6 +203,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun consumeMessage() {
         _message.value = null
+    }
+
+    fun consumeSharePayload() {
+        _sharePayload.value = null
     }
 
     fun spin() = decide(DecisionMode.SPIN)
@@ -314,6 +343,64 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     append("（食堂${summary.cafeteriaCount}，楼层${summary.floorCount}，伙食${summary.mealCount}）")
                 }
             }
+        }
+    }
+
+    fun shareCurrentConfig() {
+        viewModelScope.launch {
+            val summary = importExportService.exportToShareFile()
+            if (summary.success && summary.uri != null) {
+                _sharePayload.value = SharePayload(
+                    uri = summary.uri,
+                    fileName = summary.fileName,
+                )
+                _message.value = "已生成分享文件（食堂${summary.cafeteriaCount}，楼层${summary.floorCount}，伙食${summary.mealCount}）"
+            } else {
+                _message.value = summary.message
+            }
+        }
+    }
+
+    fun loadCommunityConfigs(force: Boolean = false) {
+        if (_isCommunityLoading.value) return
+        if (!force && _communityConfigs.value.isNotEmpty()) return
+
+        viewModelScope.launch {
+            _isCommunityLoading.value = true
+            val result = communityConfigService.fetchIndex()
+            if (result.success) {
+                _communityConfigs.value = result.entries
+                _communityUpdatedAt.value = result.updatedAt
+            } else {
+                _message.value = result.message
+            }
+            _isCommunityLoading.value = false
+        }
+    }
+
+    fun importFromCommunity(entry: CommunityConfigEntry) {
+        if (_communityImportingId.value != null) return
+
+        viewModelScope.launch {
+            _communityImportingId.value = entry.id
+            val download = communityConfigService.downloadConfig(entry)
+            if (!download.success) {
+                _communityImportingId.value = null
+                _message.value = download.message
+                return@launch
+            }
+
+            val summary: ImportSummary = importExportService.importFromRawJson(download.rawJson)
+            if (summary.success) {
+                settingsStore.clearHistory()
+            }
+            _message.value = buildString {
+                append(summary.message)
+                if (summary.success) {
+                    append("（来自${entry.schoolName}，食堂${summary.cafeteriaCount}，楼层${summary.floorCount}，伙食${summary.mealCount}）")
+                }
+            }
+            _communityImportingId.value = null
         }
     }
 }

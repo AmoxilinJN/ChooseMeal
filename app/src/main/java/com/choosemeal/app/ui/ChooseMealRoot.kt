@@ -1,5 +1,7 @@
 ﻿package com.choosemeal.app.ui
 
+import android.content.ClipData
+import android.content.Intent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.choosemeal.app.MainViewModel
@@ -40,12 +43,31 @@ enum class AppSection(val title: String) {
 fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     var currentSection by remember { mutableStateOf(AppSection.RANDOM) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     val message by viewModel.message.collectAsStateWithLifecycle()
     LaunchedEffect(message) {
         val text = message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(text)
         viewModel.consumeMessage()
+    }
+
+    val sharePayload by viewModel.sharePayload.collectAsStateWithLifecycle()
+    LaunchedEffect(sharePayload) {
+        val payload = sharePayload ?: return@LaunchedEffect
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, payload.uri)
+            clipData = ClipData.newRawUri(payload.fileName, payload.uri)
+            putExtra(
+                Intent.EXTRA_TEXT,
+                "这是我的 ChooseMeal 配置，欢迎导入体验并提交到社区仓库：${viewModel.communityRepoUrl}",
+            )
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(shareIntent, "分享配置文件")
+        runCatching { context.startActivity(chooser) }
+        viewModel.consumeSharePayload()
     }
 
     val cafeterias by viewModel.cafeterias.collectAsStateWithLifecycle()
@@ -62,6 +84,10 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     val randomFloorFilter by viewModel.randomFloorFilter.collectAsStateWithLifecycle()
     val manageCafeteria by viewModel.manageCafeteriaId.collectAsStateWithLifecycle()
     val manageFloor by viewModel.manageFloorId.collectAsStateWithLifecycle()
+    val communityConfigs by viewModel.communityConfigs.collectAsStateWithLifecycle()
+    val communityUpdatedAt by viewModel.communityUpdatedAt.collectAsStateWithLifecycle()
+    val isCommunityLoading by viewModel.isCommunityLoading.collectAsStateWithLifecycle()
+    val communityImportingId by viewModel.communityImportingId.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -145,6 +171,15 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 modifier = Modifier.padding(paddingValues),
                 onImport = viewModel::importFromUri,
                 onExport = viewModel::exportToUri,
+                onShareCurrentConfig = viewModel::shareCurrentConfig,
+                communityConfigs = communityConfigs,
+                communityUpdatedAt = communityUpdatedAt,
+                isCommunityLoading = isCommunityLoading,
+                communityImportingId = communityImportingId,
+                communityIssueUrl = viewModel.communityIssueUrl,
+                communityRepoUrl = viewModel.communityRepoUrl,
+                onLoadCommunityConfigs = viewModel::loadCommunityConfigs,
+                onImportCommunityConfig = viewModel::importFromCommunity,
             )
         }
     }
