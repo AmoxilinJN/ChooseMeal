@@ -63,7 +63,7 @@ ChooseMeal/
 ## 快速开始
 
 ```powershell
-cd d:\work\ChooseMeal
+cd Your\Path\To\ChooseMeal
 .\gradlew.bat assembleDebug
 ```
 
