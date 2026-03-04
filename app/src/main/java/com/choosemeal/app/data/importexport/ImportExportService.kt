@@ -67,7 +67,7 @@ class LocalImportExportService(
 
     override suspend fun importFromRawJson(rawJson: String): ImportSummary {
         return runCatching {
-            val doc = json.decodeFromString<ChooseMealJsonV1>(rawJson)
+            val doc = json.decodeFromString<ChooseMealJsonV1>(normalizeJsonInput(rawJson))
             val validation = validate(doc)
             if (!validation.valid) {
                 return ImportSummary(success = false, message = validation.message)
@@ -147,6 +147,15 @@ class LocalImportExportService(
 
     override fun validate(jsonDoc: ChooseMealJsonV1): ValidationResult {
         return ImportValidator.validate(jsonDoc)
+    }
+
+    private fun normalizeJsonInput(raw: String): String {
+        val withoutBom = raw.removePrefix("\uFEFF").trimStart()
+        if (!withoutBom.startsWith('"')) {
+            return withoutBom
+        }
+        val unwrapped = runCatching { json.decodeFromString<String>(withoutBom) }.getOrNull()
+        return unwrapped?.removePrefix("\uFEFF")?.trimStart() ?: withoutBom
     }
 
     private fun snapshotToContract(snapshot: DataSnapshot): ChooseMealJsonV1 {

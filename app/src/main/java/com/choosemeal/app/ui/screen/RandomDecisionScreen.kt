@@ -92,7 +92,16 @@ fun RandomDecisionScreen(
     onDrawPick: (MealOption) -> Unit,
 ) {
     var mode by remember { mutableStateOf(DecisionMode.SPIN) }
+    var revealedResult by remember { mutableStateOf<DecisionResult?>(null) }
     val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(decisionResult?.timestamp, isRolling) {
+        val latest = decisionResult ?: return@LaunchedEffect
+        if (latest.mode == DecisionMode.SPIN && isRolling) {
+            return@LaunchedEffect
+        }
+        revealedResult = latest
+    }
 
     Column(
         modifier = modifier
@@ -186,7 +195,7 @@ fun RandomDecisionScreen(
             )
         }
 
-        ResultPanel(decisionResult = decisionResult)
+        ResultPanel(decisionResult = revealedResult)
     }
 }
 

@@ -1,4 +1,4 @@
-package com.choosemeal.app.data.importexport
+﻿package com.choosemeal.app.data.importexport
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,7 +53,7 @@ class GithubCommunityConfigService : CommunityConfigService {
     override suspend fun fetchIndex(): CommunityIndexResult = withContext(Dispatchers.IO) {
         runCatching {
             val raw = httpGet(INDEX_URL)
-            val index = json.decodeFromString<CommunityIndexV1>(raw)
+            val index = json.decodeFromString<CommunityIndexV1>(normalizeJsonInput(raw))
             if (index.version != 1) {
                 return@runCatching CommunityIndexResult(
                     success = false,
@@ -88,7 +88,7 @@ class GithubCommunityConfigService : CommunityConfigService {
             CommunityDownloadResult(
                 success = true,
                 message = "ok",
-                rawJson = raw,
+                rawJson = normalizeJsonInput(raw),
             )
         }.getOrElse {
             CommunityDownloadResult(
@@ -129,6 +129,16 @@ class GithubCommunityConfigService : CommunityConfigService {
         }.also {
             connection.disconnect()
         }
+    }
+
+    private fun normalizeJsonInput(raw: String): String {
+        val withoutBom = raw.removePrefix("\uFEFF").trimStart()
+        if (!withoutBom.startsWith('"')) {
+            return withoutBom
+        }
+
+        val unwrapped = runCatching { json.decodeFromString<String>(withoutBom) }.getOrNull()
+        return unwrapped?.removePrefix("\uFEFF")?.trimStart() ?: withoutBom
     }
 
     companion object {
