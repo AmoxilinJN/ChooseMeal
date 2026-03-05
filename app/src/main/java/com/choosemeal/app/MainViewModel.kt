@@ -194,7 +194,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val communityIssueUrl: String = communityConfigService.issueTemplateUrl()
     val communityRepoUrl: String = communityConfigService.repositoryUrl()
-    val appVersionName: String = BuildConfig.VERSION_NAME
+    val appVersionName: String = BuildConfig.VERSION_NAME.substringBefore('-')
 
     init {
         viewModelScope.launch {

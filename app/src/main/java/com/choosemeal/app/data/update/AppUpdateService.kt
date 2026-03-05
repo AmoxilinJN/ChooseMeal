@@ -69,13 +69,13 @@ class GithubAppUpdateService(
             val apkAsset = selectApkAsset(release.assets)
                 ?: return@runCatching UpdateCheckResult(
                     success = false,
-                    message = "未找到可下载的 APK 资源，请先在 Release 中上传安装包。",
+                    message = "No APK asset found in latest release.",
                 )
 
             val hasUpdate = isVersionNewer(latestVersion, currentVersion)
             UpdateCheckResult(
                 success = true,
-                message = if (hasUpdate) "发现新版本 $latestVersion" else "当前已是最新版本",
+                message = if (hasUpdate) "New version found: $latestVersion" else "Already up to date",
                 hasUpdate = hasUpdate,
                 latestVersion = latestVersion,
                 changelog = release.body.trim(),
@@ -84,7 +84,7 @@ class GithubAppUpdateService(
         }.getOrElse {
             UpdateCheckResult(
                 success = false,
-                message = "检查更新失败: ${it.message ?: "网络异常"}",
+                message = "Failed to check updates: ${it.message ?: "network error"}",
             )
         }
     }
@@ -98,6 +98,22 @@ class GithubAppUpdateService(
             val fileName = "choosemeal-${sanitizeFilePart(latestVersion)}.apk"
             val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
             val apkFile = File(updatesDir, fileName)
+
+            if (apkFile.exists() && apkFile.length() > 0L) {
+                onProgress(100)
+                val cachedUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    apkFile,
+                )
+                return@runCatching ApkDownloadResult(
+                    success = true,
+                    message = "Cached APK reused",
+                    uri = cachedUri,
+                    version = latestVersion,
+                )
+            }
+
             downloadFile(downloadUrl, apkFile, onProgress)
             val uri = FileProvider.getUriForFile(
                 context,
@@ -106,14 +122,14 @@ class GithubAppUpdateService(
             )
             ApkDownloadResult(
                 success = true,
-                message = "下载完成",
+                message = "Download completed",
                 uri = uri,
                 version = latestVersion,
             )
         }.getOrElse {
             ApkDownloadResult(
                 success = false,
-                message = "下载更新失败: ${it.message ?: "网络异常"}",
+                message = "Failed to download update: ${it.message ?: "network error"}",
             )
         }
     }
