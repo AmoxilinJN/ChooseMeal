@@ -13,18 +13,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -317,6 +324,7 @@ private fun NameEditDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MealEditDialog(
     title: String,
@@ -354,41 +362,71 @@ private fun MealEditDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("伙食名") })
-                Text("口味", style = MaterialTheme.typography.labelLarge)
-                OutlinedButton(onClick = { flavorMenuExpanded = true }) {
+                Text("口味", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.outline)
+                ExposedDropdownMenuBox(
+                    expanded = flavorMenuExpanded,
+                    onExpandedChange = { flavorMenuExpanded = !flavorMenuExpanded },
+                ) {
                     val flavorText = when {
                         useCustomFlavor -> "自定义：${customFlavor.ifBlank { "未填写" }}"
                         selectedFlavor.isNotBlank() -> selectedFlavor
                         else -> "未设置"
                     }
-                    Text(flavorText)
-                }
-                DropdownMenu(expanded = flavorMenuExpanded, onDismissRequest = { flavorMenuExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text("未设置") },
-                        onClick = {
-                            flavorMenuExpanded = false
-                            useCustomFlavor = false
-                            selectedFlavor = ""
+                    TextField(
+                        value = flavorText,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.FilterList,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
                         },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = flavorMenuExpanded) },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                            focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                            unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                            disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                        ),
                     )
-                    normalizedFlavors.forEach { flavor ->
+                    ExposedDropdownMenu(
+                        expanded = flavorMenuExpanded,
+                        onDismissRequest = { flavorMenuExpanded = false },
+                    ) {
                         DropdownMenuItem(
-                            text = { Text(flavor) },
+                            text = { Text("未设置") },
                             onClick = {
                                 flavorMenuExpanded = false
                                 useCustomFlavor = false
-                                selectedFlavor = flavor
+                                selectedFlavor = ""
+                            },
+                        )
+                        normalizedFlavors.forEach { flavor ->
+                            DropdownMenuItem(
+                                text = { Text(flavor) },
+                                onClick = {
+                                    flavorMenuExpanded = false
+                                    useCustomFlavor = false
+                                    selectedFlavor = flavor
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("自定义口味") },
+                            onClick = {
+                                flavorMenuExpanded = false
+                                useCustomFlavor = true
                             },
                         )
                     }
-                    DropdownMenuItem(
-                        text = { Text("自定义口味") },
-                        onClick = {
-                            flavorMenuExpanded = false
-                            useCustomFlavor = true
-                        },
-                    )
                 }
                 if (useCustomFlavor) {
                     OutlinedTextField(

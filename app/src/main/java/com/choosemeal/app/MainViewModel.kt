@@ -33,6 +33,11 @@ data class SharePayload(
     val fileName: String,
 )
 
+data class InstallApkPayload(
+    val uri: Uri,
+    val version: String,
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as ChooseMealApplication).container
@@ -41,6 +46,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val settingsStore = container.settingsStore
     private val importExportService = container.importExportService
     private val communityConfigService = container.communityConfigService
+    private val appUpdateService = container.appUpdateService
 
     val settings: StateFlow<UserSettings> = settingsStore.settings.stateIn(
         scope = viewModelScope,
@@ -162,6 +168,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _sharePayload = MutableStateFlow<SharePayload?>(null)
     val sharePayload = _sharePayload.asStateFlow()
 
+    private val _installApkPayload = MutableStateFlow<InstallApkPayload?>(null)
+    val installApkPayload = _installApkPayload.asStateFlow()
+
+    private val _isUpdatingApp = MutableStateFlow(false)
+    val isUpdatingApp = _isUpdatingApp.asStateFlow()
+
+    private val _appUpdateProgress = MutableStateFlow<Int?>(null)
+    val appUpdateProgress = _appUpdateProgress.asStateFlow()
+
+    private val _appUpdateStatus = MutableStateFlow("点击“检查更新”可下载最新版")
+    val appUpdateStatus = _appUpdateStatus.asStateFlow()
+
     private val _communityConfigs = MutableStateFlow<List<CommunityConfigEntry>>(emptyList())
     val communityConfigs = _communityConfigs.asStateFlow()
 
@@ -176,6 +194,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val communityIssueUrl: String = communityConfigService.issueTemplateUrl()
     val communityRepoUrl: String = communityConfigService.repositoryUrl()
+    val appVersionName: String = BuildConfig.VERSION_NAME
 
     init {
         viewModelScope.launch {
@@ -258,6 +277,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun consumeSharePayload() {
         _sharePayload.value = null
+    }
+
+    fun consumeInstallApkPayload() {
+        _installApkPayload.value = null
+        _appUpdateProgress.value = null
     }
 
     fun spin() = decide(DecisionMode.SPIN)
@@ -412,6 +436,61 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 _message.value = summary.message
             }
+        }
+    }
+
+    fun checkAndUpdateApp() {
+        if (_isUpdatingApp.value) return
+
+        viewModelScope.launch {
+            _isUpdatingApp.value = true
+            _appUpdateProgress.value = null
+            _appUpdateStatus.value = "正在检查更新..."
+            val check = appUpdateService.checkForUpdate(appVersionName)
+            if (!check.success) {
+                _appUpdateStatus.value = check.message
+                _message.value = check.message
+                _isUpdatingApp.value = false
+                return@launch
+            }
+            if (!check.hasUpdate) {
+                _appUpdateStatus.value = "当前版本已是最新：${check.latestVersion}"
+                _appUpdateProgress.value = null
+                _message.value = _appUpdateStatus.value
+                _isUpdatingApp.value = false
+                return@launch
+            }
+
+            _appUpdateStatus.value = "发现新版本 ${check.latestVersion}，开始下载..."
+            _appUpdateProgress.value = 0
+            val download = appUpdateService.downloadApk(
+                downloadUrl = check.downloadUrl,
+                latestVersion = check.latestVersion,
+                onProgress = { progress ->
+                    _appUpdateProgress.value = progress
+                    if (progress in 0..99) {
+                        _appUpdateStatus.value = "下载中... $progress%"
+                    } else if (progress == -1) {
+                        _appUpdateStatus.value = "下载中..."
+                    }
+                },
+            )
+            if (!download.success || download.uri == null) {
+                _appUpdateStatus.value = download.message
+                _appUpdateProgress.value = null
+                _message.value = download.message
+                _isUpdatingApp.value = false
+                return@launch
+            }
+
+            _installApkPayload.value = InstallApkPayload(
+                uri = download.uri,
+                version = download.version,
+            )
+            _appUpdateStatus.value = "下载完成，准备安装 ${download.version}"
+            _appUpdateProgress.value = 100
+            _message.value = "新版本 ${download.version} 已下载，正在调起安装。"
+            _isUpdatingApp.value = false
         }
     }
 

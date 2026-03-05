@@ -9,7 +9,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,10 +26,15 @@ import com.choosemeal.app.data.preferences.UserSettings
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     settings: UserSettings,
+    appVersionName: String,
+    appUpdateStatus: String,
+    isUpdatingApp: Boolean,
+    appUpdateProgress: Int?,
     onCooldownEnabledChange: (Boolean) -> Unit,
     onAnimationsEnabledChange: (Boolean) -> Unit,
     onHapticsEnabledChange: (Boolean) -> Unit,
     onWindowSizeChange: (Int) -> Unit,
+    onCheckAppUpdate: () -> Unit,
 ) {
     Column(
         modifier = modifier
@@ -92,6 +99,33 @@ fun SettingsScreen(
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("随机策略", fontWeight = FontWeight.SemiBold)
                 Text("冷却去重采用加权随机：命中最近窗口的候选会按 0.25 权重参与抽取，避免无聊连击。")
+            }
+        }
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("应用更新", fontWeight = FontWeight.SemiBold)
+                Text("当前版本：$appVersionName", style = MaterialTheme.typography.bodySmall)
+                Text(appUpdateStatus, style = MaterialTheme.typography.bodySmall)
+                if (isUpdatingApp || appUpdateProgress != null) {
+                    if (appUpdateProgress == null || appUpdateProgress < 0) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    } else {
+                        LinearProgressIndicator(
+                            progress = { appUpdateProgress.coerceIn(0, 100) / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text("下载进度：${appUpdateProgress.coerceIn(0, 100)}%", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                OutlinedButton(
+                    onClick = onCheckAppUpdate,
+                    enabled = !isUpdatingApp,
+                ) {
+                    Text(if (isUpdatingApp) "更新处理中..." else "检查更新并下载安装")
+                }
             }
         }
     }

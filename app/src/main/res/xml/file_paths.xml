@@ -3,4 +3,7 @@
     <cache-path
         name="shared_configs"
         path="shared_configs/" />
+    <cache-path
+        name="updates"
+        path="updates/" />
 </paths>

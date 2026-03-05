@@ -1,6 +1,6 @@
 ﻿{
   "version": 1,
-  "updatedAt": "2026-03-04",
+  "updatedAt": "2026-03-05",
   "configs": [
     {
       "id": "northwestern-polytechnical-university-changan-campus",
@@ -9,7 +9,7 @@
       "region": "CN-SN",
       "file": "community/configs/northwestern-polytechnical-university-changan-campus.json",
       "author": "@AmoxilinJN",
-      "updatedAt": "2026-03-04",
+      "updatedAt": "2026-03-05",
       "tags": [
         "示例",
         "长安校区"

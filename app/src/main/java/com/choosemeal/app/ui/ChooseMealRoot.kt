@@ -2,6 +2,9 @@
 
 import android.content.ClipData
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -70,6 +73,32 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
         viewModel.consumeSharePayload()
     }
 
+    val installApkPayload by viewModel.installApkPayload.collectAsStateWithLifecycle()
+    LaunchedEffect(installApkPayload) {
+        val payload = installApkPayload ?: return@LaunchedEffect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+            val settingsIntent = Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:${context.packageName}"),
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(settingsIntent) }
+            snackbarHostState.showSnackbar("请先允许“安装未知应用”，然后再次点击更新按钮。")
+            viewModel.consumeInstallApkPayload()
+            return@LaunchedEffect
+        }
+
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(payload.uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val startResult = runCatching { context.startActivity(installIntent) }
+        if (startResult.isFailure) {
+            snackbarHostState.showSnackbar("启动安装失败：${startResult.exceptionOrNull()?.message ?: "未知错误"}")
+        }
+        viewModel.consumeInstallApkPayload()
+    }
+
     val cafeterias by viewModel.cafeterias.collectAsStateWithLifecycle()
     val randomFloors by viewModel.randomFloors.collectAsStateWithLifecycle()
     val allFloors by viewModel.allFloors.collectAsStateWithLifecycle()
@@ -79,6 +108,9 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     val filteredOptions by viewModel.filteredOptions.collectAsStateWithLifecycle()
     val decisionResult by viewModel.decisionResult.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val appUpdateStatus by viewModel.appUpdateStatus.collectAsStateWithLifecycle()
+    val isUpdatingApp by viewModel.isUpdatingApp.collectAsStateWithLifecycle()
+    val appUpdateProgress by viewModel.appUpdateProgress.collectAsStateWithLifecycle()
     val isRolling by viewModel.isRolling.collectAsStateWithLifecycle()
     val animationToken by viewModel.animationToken.collectAsStateWithLifecycle()
     val randomCafeteriaFilter by viewModel.randomCafeteriaFilter.collectAsStateWithLifecycle()
@@ -173,10 +205,15 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
             AppSection.SETTINGS -> SettingsScreen(
                 modifier = Modifier.padding(paddingValues),
                 settings = settings,
+                appVersionName = viewModel.appVersionName,
+                appUpdateStatus = appUpdateStatus,
+                isUpdatingApp = isUpdatingApp,
+                appUpdateProgress = appUpdateProgress,
                 onCooldownEnabledChange = viewModel::setCooldownEnabled,
                 onAnimationsEnabledChange = viewModel::setAnimationsEnabled,
                 onHapticsEnabledChange = viewModel::setHapticsEnabled,
                 onWindowSizeChange = viewModel::setRecentWindowSize,
+                onCheckAppUpdate = viewModel::checkAndUpdateApp,
             )
 
             AppSection.IMPORT_EXPORT -> ImportExportScreen(

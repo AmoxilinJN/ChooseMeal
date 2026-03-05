@@ -92,14 +92,15 @@ class LocalImportExportService(
                         )
                     },
                     meals = doc.meals.map {
+                        val normalizedMeal = normalizeLegacyMealFields(it)
                         MealEntity(
-                            id = it.id,
-                            floorId = it.floorId,
-                            name = it.name,
-                            tags = it.tags,
-                            flavor = it.flavor,
-                            priceYuan = it.priceYuan,
-                            enabled = it.enabled,
+                            id = normalizedMeal.id,
+                            floorId = normalizedMeal.floorId,
+                            name = normalizedMeal.name,
+                            tags = normalizedMeal.tags,
+                            flavor = normalizedMeal.flavor,
+                            priceYuan = normalizedMeal.priceYuan,
+                            enabled = normalizedMeal.enabled,
                         )
                     },
                 ),
@@ -192,4 +193,60 @@ class LocalImportExportService(
             },
         )
     }
+}
+
+private val legacyPriceTokenRegex = Regex("^[¥￥]?\\s*(\\d{1,4})\\s*元?$")
+private val legacyTagSplitRegex = Regex("[,，、;；|]")
+private val legacyFlavorHints = setOf(
+    "清淡", "微辣", "中辣", "重辣", "麻辣", "香辣", "辣", "不辣",
+    "重口", "重口味", "适中", "均衡", "偏辣", "偏甜", "偏咸",
+)
+
+internal fun normalizeLegacyMealFields(meal: JsonMeal): JsonMeal {
+    var resolvedFlavor = meal.flavor.trim()
+    var resolvedPrice = meal.priceYuan
+
+    if (meal.tags.isBlank()) {
+        return meal.copy(flavor = resolvedFlavor, priceYuan = resolvedPrice)
+    }
+
+    val cleanedTags = mutableListOf<String>()
+    val tokens = meal.tags.split(legacyTagSplitRegex)
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+
+    tokens.forEach { token ->
+        val tokenPrice = parseLegacyPriceToken(token)
+        when {
+            tokenPrice != null -> {
+                if (resolvedPrice == null) {
+                    resolvedPrice = tokenPrice
+                }
+            }
+            resolvedFlavor.isBlank() && isLikelyLegacyFlavorToken(token) -> {
+                resolvedFlavor = token
+            }
+            resolvedFlavor.isNotBlank() && token.equals(resolvedFlavor, ignoreCase = true) -> Unit
+            else -> cleanedTags += token
+        }
+    }
+
+    return meal.copy(
+        tags = cleanedTags.distinct().joinToString(","),
+        flavor = resolvedFlavor,
+        priceYuan = resolvedPrice,
+    )
+}
+
+private fun parseLegacyPriceToken(token: String): Int? {
+    val text = token.trim()
+    val match = legacyPriceTokenRegex.matchEntire(text) ?: return null
+    return match.groupValues.getOrNull(1)?.toIntOrNull()
+}
+
+private fun isLikelyLegacyFlavorToken(token: String): Boolean {
+    val text = token.trim()
+    if (text.isBlank()) return false
+    if (legacyFlavorHints.contains(text)) return true
+    return text.endsWith("辣") || text.contains("清淡") || text.contains("重口") || text.contains("适中")
 }
