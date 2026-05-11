@@ -1,11 +1,14 @@
 ﻿package com.choosemeal.app
 
 import android.app.Application
+import com.choosemeal.app.ai.AiService
+import com.choosemeal.app.ai.VolcengineAiService
 import com.choosemeal.app.data.importexport.CommunityConfigService
 import com.choosemeal.app.data.importexport.GithubCommunityConfigService
 import com.choosemeal.app.data.importexport.ImportExportService
 import com.choosemeal.app.data.importexport.LocalImportExportService
 import com.choosemeal.app.data.local.ChooseMealDatabase
+import com.choosemeal.app.data.preferences.AiSettingsStore
 import com.choosemeal.app.data.preferences.SettingsStore
 import com.choosemeal.app.data.repository.MealRepository
 import com.choosemeal.app.data.repository.OfflineMealRepository
@@ -22,11 +25,13 @@ class AppContainer(application: Application) {
     private val database = ChooseMealDatabase.create(application)
 
     val settingsStore = SettingsStore(application)
+    val aiSettingsStore = AiSettingsStore(application)
     val repository: MealRepository = OfflineMealRepository(database)
     val randomEngine: RandomEngine = DefaultRandomEngine(
         repository = repository,
         settingsStore = settingsStore,
     )
+    val aiService: AiService = VolcengineAiService(aiSettingsStore)
     val communityConfigService: CommunityConfigService = GithubCommunityConfigService()
     val appUpdateService: AppUpdateService = GithubAppUpdateService(application)
     val importExportService: ImportExportService = LocalImportExportService(

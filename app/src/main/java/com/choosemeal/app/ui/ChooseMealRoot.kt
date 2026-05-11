@@ -5,17 +5,23 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Dataset
 import androidx.compose.material.icons.outlined.ImportExport
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -27,16 +33,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.choosemeal.app.MainViewModel
+import com.choosemeal.app.ui.screen.AiScreen
 import com.choosemeal.app.ui.screen.DataManagementScreen
+import com.choosemeal.app.ui.screen.FoodMapScreen
 import com.choosemeal.app.ui.screen.ImportExportScreen
 import com.choosemeal.app.ui.screen.RandomDecisionScreen
 import com.choosemeal.app.ui.screen.SettingsScreen
 
 enum class AppSection(val title: String) {
-    RANDOM("决策"),
+    FOOD_MAP("美食地图"),
+    AI("AI"),
     DATA("数据"),
     SETTINGS("设置"),
     IMPORT_EXPORT("导入导出"),
@@ -44,7 +54,8 @@ enum class AppSection(val title: String) {
 
 @Composable
 fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
-    var currentSection by remember { mutableStateOf(AppSection.RANDOM) }
+    var currentSection by remember { mutableStateOf(AppSection.FOOD_MAP) }
+    var showFoodMap by remember { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -99,6 +110,18 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
         viewModel.consumeInstallApkPayload()
     }
 
+    val aiSettings by viewModel.aiSettings.collectAsStateWithLifecycle()
+    val aiSearchResult by viewModel.aiSearchResult.collectAsStateWithLifecycle()
+    val aiSearchLoading by viewModel.aiSearchLoading.collectAsStateWithLifecycle()
+    val aiStreamingText by viewModel.aiStreamingText.collectAsStateWithLifecycle()
+    val nlSearchQuery by viewModel.nlSearchQuery.collectAsStateWithLifecycle()
+    val aiSmartRecommendResult by viewModel.aiSmartRecommendResult.collectAsStateWithLifecycle()
+    val aiSmartRecommendLoading by viewModel.aiRecommendLoading.collectAsStateWithLifecycle()
+    val aiSmartRecommendStreamingText by viewModel.aiSmartRecommendStreamingText.collectAsStateWithLifecycle()
+    val aiDietAnalysis by viewModel.aiDietAnalysis.collectAsStateWithLifecycle()
+    val aiAnalysisLoading by viewModel.aiAnalysisLoading.collectAsStateWithLifecycle()
+    val aiAnalysisStreamingText by viewModel.aiAnalysisStreamingText.collectAsStateWithLifecycle()
+
     val cafeterias by viewModel.cafeterias.collectAsStateWithLifecycle()
     val randomFloors by viewModel.randomFloors.collectAsStateWithLifecycle()
     val allFloors by viewModel.allFloors.collectAsStateWithLifecycle()
@@ -106,6 +129,8 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
     val manageMeals by viewModel.manageMeals.collectAsStateWithLifecycle()
     val flavorOptions by viewModel.flavorOptions.collectAsStateWithLifecycle()
     val filteredOptions by viewModel.filteredOptions.collectAsStateWithLifecycle()
+    val enabledOptions by viewModel.enabledOptions.collectAsStateWithLifecycle()
+    val hierarchy by viewModel.hierarchy.collectAsStateWithLifecycle()
     val decisionResult by viewModel.decisionResult.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val appUpdateStatus by viewModel.appUpdateStatus.collectAsStateWithLifecycle()
@@ -131,10 +156,16 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = currentSection == AppSection.RANDOM,
-                    onClick = { currentSection = AppSection.RANDOM },
+                    selected = currentSection == AppSection.FOOD_MAP,
+                    onClick = { currentSection = AppSection.FOOD_MAP },
                     icon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-                    label = { Text("决策") },
+                    label = { Text("美食地图") },
+                )
+                NavigationBarItem(
+                    selected = currentSection == AppSection.AI,
+                    onClick = { currentSection = AppSection.AI },
+                    icon = { Icon(Icons.Outlined.SmartToy, contentDescription = null) },
+                    label = { Text("AI") },
                 )
                 NavigationBarItem(
                     selected = currentSection == AppSection.DATA,
@@ -158,30 +189,63 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
         },
     ) { paddingValues ->
         when (currentSection) {
-            AppSection.RANDOM -> RandomDecisionScreen(
-                modifier = Modifier.padding(paddingValues),
-                cafeterias = cafeterias,
-                floors = randomFloors,
-                options = filteredOptions,
-                selectedCafeteriaId = randomCafeteriaFilter,
-                selectedFloorId = randomFloorFilter,
-                selectedPriceMinInput = randomPriceMinInput,
-                selectedPriceMaxInput = randomPriceMaxInput,
-                flavorOptions = flavorOptions,
-                selectedFlavor = randomFlavorFilter,
-                decisionResult = decisionResult,
-                isRolling = isRolling,
-                animationToken = animationToken,
-                animationsEnabled = settings.animationsEnabled,
-                hapticsEnabled = settings.hapticsEnabled,
-                onSelectCafeteria = viewModel::setRandomCafeteriaFilter,
-                onSelectFloor = viewModel::setRandomFloorFilter,
-                onSelectPriceMinInput = viewModel::setRandomPriceMinInput,
-                onSelectPriceMaxInput = viewModel::setRandomPriceMaxInput,
-                onSelectFlavor = viewModel::setRandomFlavorFilter,
-                onSpin = viewModel::spin,
-                onDrawPick = viewModel::chooseDrawOption,
-            )
+            AppSection.FOOD_MAP -> {
+                Column(modifier = Modifier.padding(paddingValues)) {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                    ) {
+                        SegmentedButton(
+                            selected = showFoodMap,
+                            onClick = { showFoodMap = true },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) { Text("美食地图") }
+                        SegmentedButton(
+                            selected = !showFoodMap,
+                            onClick = {
+                                showFoodMap = false
+                                // Reset filter when switching to spin
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) { Text("随机转盘") }
+                    }
+
+                    if (showFoodMap) {
+                        FoodMapScreen(
+                            modifier = Modifier,
+                            hierarchy = hierarchy,
+                            enabledOptions = enabledOptions,
+                            onRecordMeal = viewModel::chooseDrawOption,
+                        )
+                    } else {
+                        RandomDecisionScreen(
+                            modifier = Modifier,
+                            cafeterias = cafeterias,
+                            floors = randomFloors,
+                            options = filteredOptions,
+                            selectedCafeteriaId = randomCafeteriaFilter,
+                            selectedFloorId = randomFloorFilter,
+                            selectedPriceMinInput = randomPriceMinInput,
+                            selectedPriceMaxInput = randomPriceMaxInput,
+                            flavorOptions = flavorOptions,
+                            selectedFlavor = randomFlavorFilter,
+                            decisionResult = decisionResult,
+                            isRolling = isRolling,
+                            animationToken = animationToken,
+                            animationsEnabled = settings.animationsEnabled,
+                            hapticsEnabled = settings.hapticsEnabled,
+                            onSelectCafeteria = viewModel::setRandomCafeteriaFilter,
+                            onSelectFloor = viewModel::setRandomFloorFilter,
+                            onSelectPriceMinInput = viewModel::setRandomPriceMinInput,
+                            onSelectPriceMaxInput = viewModel::setRandomPriceMaxInput,
+                            onSelectFlavor = viewModel::setRandomFlavorFilter,
+                            onSpin = viewModel::spin,
+                            onDrawPick = viewModel::chooseDrawOption,
+                        )
+                    }
+                }
+            }
 
             AppSection.DATA -> DataManagementScreen(
                 modifier = Modifier.padding(paddingValues),
@@ -200,6 +264,9 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 onDeleteCafeteria = viewModel::deleteCafeteria,
                 onDeleteFloor = viewModel::deleteFloor,
                 onDeleteMeal = viewModel::deleteMeal,
+                history = settings.recentHistory,
+                onDeleteHistoryRecord = viewModel::deleteHistoryRecord,
+                onUpdateHistoryRecord = viewModel::updateHistoryRecord,
             )
 
             AppSection.SETTINGS -> SettingsScreen(
@@ -214,6 +281,31 @@ fun ChooseMealRoot(viewModel: MainViewModel = viewModel()) {
                 onHapticsEnabledChange = viewModel::setHapticsEnabled,
                 onWindowSizeChange = viewModel::setRecentWindowSize,
                 onCheckAppUpdate = viewModel::checkAndUpdateApp,
+            )
+
+            AppSection.AI -> AiScreen(
+                modifier = Modifier.padding(paddingValues),
+                aiEnabled = aiSettings.aiEnabled,
+                aiSearchResult = aiSearchResult,
+                aiSearchLoading = aiSearchLoading,
+                aiStreamingText = aiStreamingText,
+                nlSearchQuery = nlSearchQuery,
+                filteredOptions = filteredOptions,
+                onNlSearchQueryChange = viewModel::setNlSearchQuery,
+                onNaturalLanguageSearch = viewModel::aiNaturalLanguageSearch,
+                onConsumeSearchResult = viewModel::consumeAiSearchResult,
+                aiSmartRecommendResult = aiSmartRecommendResult,
+                aiSmartRecommendLoading = aiSmartRecommendLoading,
+                aiSmartRecommendStreamingText = aiSmartRecommendStreamingText,
+                onSmartRecommend = viewModel::aiSmartRecommend,
+                onConsumeSmartRecommendResult = viewModel::consumeAiSmartRecommendResult,
+                onRecordFromRecommend = viewModel::recordFromAiRecommend,
+                aiDietAnalysis = aiDietAnalysis,
+                aiAnalysisLoading = aiAnalysisLoading,
+                aiAnalysisStreamingText = aiAnalysisStreamingText,
+                recentHistoryCount = settings.recentHistory.size,
+                onAnalyzeHistory = viewModel::aiAnalyzeHistory,
+                onConsumeDietAnalysis = viewModel::consumeAiDietAnalysis,
             )
 
             AppSection.IMPORT_EXPORT -> ImportExportScreen(

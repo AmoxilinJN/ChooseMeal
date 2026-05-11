@@ -56,7 +56,8 @@ class DefaultRandomEngine(
             penaltyFactor = settings.penaltyFactor,
         )
 
-        val history = settings.recentHistory.take(policy.recentWindowSize.coerceAtLeast(0)).toSet()
+        val history = settings.recentHistory.map { it.key }
+            .take(policy.recentWindowSize.coerceAtLeast(0)).toSet()
         val weights = options.map { option ->
             if (settings.cooldownEnabled && history.contains(option.historyKey())) {
                 policy.penaltyFactor.toDouble().coerceIn(0.01, 1.0)
@@ -81,5 +82,5 @@ class DefaultRandomEngine(
         return result
     }
 
-    private fun MealOption.historyKey(): String = "${cafeteriaId}:${floorId}:${mealId}"
+    private fun MealOption.historyKey(): String = "${cafeteriaName} > ${floorName} > ${mealName}"
 }
