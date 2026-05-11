@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -90,15 +91,6 @@ fun SettingsScreen(
                     checked = settings.hapticsEnabled,
                     onCheckedChange = onHapticsEnabledChange,
                 )
-            }
-        }
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("随机策略", fontWeight = FontWeight.SemiBold)
-                Text("冷却去重采用加权随机：命中最近窗口的候选会按 0.25 权重参与抽取，避免无聊连击。")
             }
         }
 

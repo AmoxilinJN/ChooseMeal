@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +47,11 @@ import androidx.compose.ui.unit.dp
 import com.choosemeal.app.data.local.entity.CafeteriaEntity
 import com.choosemeal.app.data.local.entity.FloorEntity
 import com.choosemeal.app.data.local.entity.MealEntity
+import com.choosemeal.app.data.preferences.HistoryRecord
+import com.choosemeal.app.data.preferences.formatForUI
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun DataManagementScreen(
@@ -65,10 +71,15 @@ fun DataManagementScreen(
     onDeleteCafeteria: (Long) -> Unit,
     onDeleteFloor: (Long) -> Unit,
     onDeleteMeal: (Long) -> Unit,
+    history: List<HistoryRecord> = emptyList(),
+    onDeleteHistoryRecord: (Int) -> Unit = {},
+    onUpdateHistoryRecord: (Int, String, Long) -> Unit = { _, _, _ -> },
 ) {
     var cafeteriaEdit by remember { mutableStateOf<CafeteriaEntity?>(null) }
     var floorEdit by remember { mutableStateOf<FloorEntity?>(null) }
     var mealEdit by remember { mutableStateOf<MealEntity?>(null) }
+    var editingHistoryIndex by remember { mutableStateOf<Int?>(null) }
+    var deletingHistoryIndex by remember { mutableStateOf<Int?>(null) }
 
     if (cafeteriaEdit != null) {
         NameEditDialog(
@@ -118,6 +129,38 @@ fun DataManagementScreen(
                 mealEdit = null
             },
         )
+    }
+
+    if (deletingHistoryIndex != null) {
+        AlertDialog(
+            onDismissRequest = { deletingHistoryIndex = null },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除这条记录吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deletingHistoryIndex?.let { onDeleteHistoryRecord(it) }
+                    deletingHistoryIndex = null
+                }) { Text("确定") }
+            },
+            dismissButton = { TextButton(onClick = { deletingHistoryIndex = null }) { Text("取消") } },
+        )
+    }
+
+    if (editingHistoryIndex != null) {
+        val idx = editingHistoryIndex!!
+        val record = history.getOrNull(idx)
+        if (record != null) {
+            HistoryEditDialog(
+                record = record,
+                onDismiss = { editingHistoryIndex = null },
+                onConfirm = { newKey, newTimestamp ->
+                    onUpdateHistoryRecord(idx, newKey, newTimestamp)
+                    editingHistoryIndex = null
+                },
+            )
+        } else {
+            editingHistoryIndex = null
+        }
     }
 
     Column(
@@ -217,13 +260,34 @@ fun DataManagementScreen(
                 )
             }
         }
+
+        DataSectionCard(
+            title = "历史记录",
+            onAdd = null,
+        ) {
+            if (history.isEmpty()) {
+                Text(
+                    "暂无记录，去「美食地图」或「随机转盘」做一次选择吧",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            } else {
+                history.forEachIndexed { index, record ->
+                    HistoryRecordRow(
+                        record = record,
+                        onEdit = { editingHistoryIndex = index },
+                        onDelete = { deletingHistoryIndex = index },
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun DataSectionCard(
     title: String,
-    onAdd: () -> Unit,
+    onAdd: (() -> Unit)?,
     content: @Composable () -> Unit,
 ) {
     Card(
@@ -242,9 +306,11 @@ private fun DataSectionCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = onAdd) {
-                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text("新增")
+                if (onAdd != null) {
+                    OutlinedButton(onClick = onAdd) {
+                        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("新增")
+                    }
                 }
             }
             content()
@@ -469,4 +535,89 @@ private fun buildMealSubtitle(meal: MealEntity): String {
         if (meal.tags.isNotBlank()) add(meal.tags)
     }
     return chunks.joinToString(" · ").ifBlank { "无附加信息" }
+}
+
+@Composable
+private fun HistoryRecordRow(
+    record: HistoryRecord,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(record.key, fontWeight = FontWeight.SemiBold)
+            Text(record.formatForUI(), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline)
+        }
+        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, contentDescription = null) }
+        IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, contentDescription = null) }
+    }
+}
+
+@Composable
+private fun HistoryEditDialog(
+    record: HistoryRecord,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Long) -> Unit,
+) {
+    var key by remember(record) { mutableStateOf(record.key) }
+    var timeText by remember(record) {
+        mutableStateOf(
+            if (record.timestamp == 0L) ""
+            else {
+                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINESE)
+                sdf.format(Date(record.timestamp))
+            }
+        )
+    }
+    var timeError by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("编辑记录") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = { key = it },
+                    label = { Text("菜品路径") },
+                    placeholder = { Text("食堂 > 楼层 > 菜品") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = timeText,
+                    onValueChange = {
+                        timeText = it
+                        timeError = false
+                    },
+                    label = { Text("时间 (yyyy-MM-dd HH:mm)") },
+                    placeholder = { Text("2026-05-10 12:30") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = timeError,
+                    supportingText = if (timeError) {{ Text("时间格式错误，请使用 yyyy-MM-dd HH:mm") }} else null,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val ts = if (timeText.isBlank()) {
+                    0L
+                } else {
+                    runCatching {
+                        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINESE)
+                        sdf.parse(timeText)?.time ?: 0L
+                    }.getOrElse {
+                        timeError = true
+                        return@TextButton
+                    }
+                }
+                if (key.isNotBlank()) onConfirm(key.trim(), ts)
+            }) { Text("确定") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
 }

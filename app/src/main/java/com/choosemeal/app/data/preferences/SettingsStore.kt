@@ -1,4 +1,4 @@
-﻿package com.choosemeal.app.data.preferences
+package com.choosemeal.app.data.preferences
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -9,10 +9,20 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val Context.dataStore by preferencesDataStore(name = "choosemeal_settings")
+
+@Serializable
+data class HistoryRecord(
+    val key: String,
+    val timestamp: Long,
+)
 
 data class UserSettings(
     val cooldownEnabled: Boolean = true,
@@ -20,8 +30,20 @@ data class UserSettings(
     val penaltyFactor: Float = 0.25f,
     val animationsEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
-    val recentHistory: List<String> = emptyList(),
+    val recentHistory: List<HistoryRecord> = emptyList(),
 )
+
+fun HistoryRecord.formatForUI(): String {
+    if (timestamp == 0L) return "未记录时间"
+    val sdf = SimpleDateFormat("yyyy年M月d日 HH:mm", Locale.CHINESE)
+    return sdf.format(Date(timestamp))
+}
+
+fun formatTimestampForAI(timestamp: Long): String {
+    if (timestamp == 0L) return "未知时间"
+    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINESE)
+    return sdf.format(Date(timestamp))
+}
 
 class SettingsStore(private val context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -71,17 +93,42 @@ class SettingsStore(private val context: Context) {
         val keep = maxWindow.coerceAtLeast(1)
         context.dataStore.edit { prefs ->
             val old = parseHistory(prefs[Keys.recentHistoryJson])
-            val newHistory = (listOf(key) + old.filterNot { it == key }).take(keep)
+            val newRecord = HistoryRecord(key = key, timestamp = System.currentTimeMillis())
+            val newHistory = (listOf(newRecord) + old.filterNot { it.key == key }).take(keep)
             prefs[Keys.recentHistoryJson] = json.encodeToString(newHistory)
         }
     }
 
     suspend fun clearHistory() {
-        context.dataStore.edit { it[Keys.recentHistoryJson] = json.encodeToString(emptyList<String>()) }
+        context.dataStore.edit { it[Keys.recentHistoryJson] = json.encodeToString(emptyList<HistoryRecord>()) }
     }
 
-    private fun parseHistory(raw: String?): List<String> {
+    suspend fun deleteHistoryRecord(index: Int) {
+        context.dataStore.edit { prefs ->
+            val list = parseHistory(prefs[Keys.recentHistoryJson]).toMutableList()
+            if (index in list.indices) {
+                list.removeAt(index)
+                prefs[Keys.recentHistoryJson] = json.encodeToString(list)
+            }
+        }
+    }
+
+    suspend fun updateHistoryRecord(index: Int, newKey: String, newTimestamp: Long) {
+        context.dataStore.edit { prefs ->
+            val list = parseHistory(prefs[Keys.recentHistoryJson]).toMutableList()
+            if (index in list.indices) {
+                list[index] = list[index].copy(key = newKey, timestamp = newTimestamp)
+                prefs[Keys.recentHistoryJson] = json.encodeToString(list)
+            }
+        }
+    }
+
+    private fun parseHistory(raw: String?): List<HistoryRecord> {
         if (raw.isNullOrBlank()) return emptyList()
-        return runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList())
+        runCatching { json.decodeFromString<List<HistoryRecord>>(raw) }
+            .getOrNull()?.let { return it }
+        return runCatching { json.decodeFromString<List<String>>(raw) }
+            .getOrDefault(emptyList())
+            .map { HistoryRecord(key = it, timestamp = 0L) }
     }
 }

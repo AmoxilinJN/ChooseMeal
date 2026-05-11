@@ -10,6 +10,15 @@ import com.choosemeal.app.data.local.entity.CafeteriaEntity
 import com.choosemeal.app.data.local.entity.FloorEntity
 import com.choosemeal.app.data.local.entity.MealEntity
 import com.choosemeal.app.data.preferences.UserSettings
+import com.choosemeal.app.ai.AiDietAnalysis
+import com.choosemeal.app.ai.AiPrompts
+import com.choosemeal.app.ai.AiRecommendItem
+import com.choosemeal.app.ai.AiSearchResult
+import com.choosemeal.app.ai.AiSmartRecommendResult
+import com.choosemeal.app.ai.UserEatingStats
+import com.choosemeal.app.data.preferences.AiSettings
+import com.choosemeal.app.data.preferences.HistoryRecord
+import com.choosemeal.app.data.preferences.formatTimestampForAI
 import com.choosemeal.app.domain.model.DecisionMode
 import com.choosemeal.app.domain.model.DecisionResult
 import com.choosemeal.app.domain.model.DecisionScope
@@ -44,6 +53,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = container.repository
     private val randomEngine = container.randomEngine
     private val settingsStore = container.settingsStore
+    private val aiSettingsStore = container.aiSettingsStore
+    private val aiService = container.aiService
     private val importExportService = container.importExportService
     private val communityConfigService = container.communityConfigService
     private val appUpdateService = container.appUpdateService
@@ -52,6 +63,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = UserSettings(),
+    )
+
+    val aiSettings: StateFlow<AiSettings> = aiSettingsStore.settings.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = AiSettings(),
     )
 
     val cafeterias = repository.observeCafeterias().stateIn(
@@ -76,6 +93,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val randomFlavorFilter = _randomFlavorFilter.asStateFlow()
 
     val randomFloors = _randomCafeteriaFilter.flatMapLatest { repository.observeFloors(it) }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    val hierarchy = repository.observeHierarchy().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList(),
@@ -192,6 +215,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _communityImportingId = MutableStateFlow<String?>(null)
     val communityImportingId = _communityImportingId.asStateFlow()
 
+    private val _aiSmartRecommendResult = MutableStateFlow<AiSmartRecommendResult?>(null)
+    val aiSmartRecommendResult = _aiSmartRecommendResult.asStateFlow()
+
+    private val _aiSearchResult = MutableStateFlow<AiSearchResult?>(null)
+    val aiSearchResult = _aiSearchResult.asStateFlow()
+
+    private val _aiDietAnalysis = MutableStateFlow<AiDietAnalysis?>(null)
+    val aiDietAnalysis = _aiDietAnalysis.asStateFlow()
+
+    private val _aiRecommendLoading = MutableStateFlow(false)
+    val aiRecommendLoading = _aiRecommendLoading.asStateFlow()
+
+    private val _aiSearchLoading = MutableStateFlow(false)
+    val aiSearchLoading = _aiSearchLoading.asStateFlow()
+
+    private val _aiAnalysisLoading = MutableStateFlow(false)
+    val aiAnalysisLoading = _aiAnalysisLoading.asStateFlow()
+
+    private val _nlSearchQuery = MutableStateFlow("")
+    val nlSearchQuery = _nlSearchQuery.asStateFlow()
+
+    private val _aiStreamingText = MutableStateFlow("")
+    val aiStreamingText: StateFlow<String> = _aiStreamingText.asStateFlow()
+
+    private val _aiSmartRecommendStreamingText = MutableStateFlow("")
+    val aiSmartRecommendStreamingText = _aiSmartRecommendStreamingText.asStateFlow()
+
+    private val _aiAnalysisStreamingText = MutableStateFlow("")
+    val aiAnalysisStreamingText = _aiAnalysisStreamingText.asStateFlow()
+
     val communityIssueUrl: String = communityConfigService.issueTemplateUrl()
     val communityRepoUrl: String = communityConfigService.repositoryUrl()
     val appVersionName: String = BuildConfig.VERSION_NAME.substringBefore('-')
@@ -296,7 +349,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 meal = option.mealName,
                 timestamp = System.currentTimeMillis(),
                 mode = DecisionMode.DRAW,
-                historyKey = "${option.cafeteriaId}:${option.floorId}:${option.mealId}",
+                historyKey = "${option.cafeteriaName} > ${option.floorName} > ${option.mealName}",
             )
             _decisionResult.value = result
 
@@ -540,5 +593,251 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun parsePriceInput(input: String): Int? {
         if (input.isBlank()) return null
         return input.filter(Char::isDigit).toIntOrNull()
+    }
+
+    fun setNlSearchQuery(query: String) {
+        _nlSearchQuery.value = query
+    }
+
+    fun aiSmartRecommend() {
+        if (_aiRecommendLoading.value) return
+        viewModelScope.launch {
+            _aiRecommendLoading.value = true
+            _aiSmartRecommendStreamingText.value = ""
+            val options = filteredOptions.value
+            if (options.isEmpty()) {
+                _message.value = "当前无可选项，请先补充食堂数据"
+                _aiRecommendLoading.value = false
+                return@launch
+            }
+
+            val historySet = settings.value.recentHistory.map { it.key }.toSet()
+            val freshOptions = options.filterNot {
+                "${it.cafeteriaName} > ${it.floorName} > ${it.mealName}" in historySet
+            }.ifEmpty { options }
+
+            val enrichedOptions = freshOptions.map { enrichOptionString(it) }
+            val historyStrings = settings.value.recentHistory.takeLast(10).map {
+                "[${formatTimestampForAI(it.timestamp)}] ${it.key}"
+            }
+            val allOptions = enabledOptions.value
+            val stats = computeEatingStats(settings.value.recentHistory, allOptions)
+            val statsText = AiPrompts.formatEatingStats(stats)
+
+            val result = aiService.smartRecommend(
+                options = enrichedOptions,
+                history = historyStrings,
+                statsText = statsText,
+            ) { chunk ->
+                _aiSmartRecommendStreamingText.value += chunk
+            }
+            result.fold(
+                onSuccess = {
+                    _aiSmartRecommendResult.value = it
+                    _aiSmartRecommendStreamingText.value = ""
+                },
+                onFailure = { _message.value = "AI 推荐失败：${it.message ?: "未知错误"}" },
+            )
+            _aiRecommendLoading.value = false
+        }
+    }
+
+    fun aiNaturalLanguageSearch() {
+        val query = _nlSearchQuery.value
+        if (query.isBlank() || _aiSearchLoading.value) return
+        viewModelScope.launch {
+            _aiSearchLoading.value = true
+            _aiStreamingText.value = ""
+            val options = filteredOptions.value
+            if (options.isEmpty()) {
+                _message.value = "当前无可选项，请先补充食堂数据"
+                _aiSearchLoading.value = false
+                return@launch
+            }
+
+            val optionStrings = options.map { enrichOptionString(it) }
+            val result = aiService.naturalLanguageSearch(query, optionStrings) { chunk ->
+                _aiStreamingText.value += chunk
+            }
+            result.fold(
+                onSuccess = {
+                    _aiSearchResult.value = it
+                    _aiStreamingText.value = ""
+                },
+                onFailure = { _message.value = "AI 搜索失败：${it.message ?: "未知错误"}" },
+            )
+            _aiSearchLoading.value = false
+        }
+    }
+
+    fun aiAnalyzeHistory() {
+        if (_aiAnalysisLoading.value) return
+        viewModelScope.launch {
+            _aiAnalysisLoading.value = true
+            _aiAnalysisStreamingText.value = ""
+            val history = settings.value.recentHistory
+            if (history.isEmpty()) {
+                _message.value = "暂无饮食记录，先去吃几顿吧"
+                _aiAnalysisLoading.value = false
+                return@launch
+            }
+
+            val allOptions = enabledOptions.value
+            val recentHistory = history.takeLast(30)
+            val enrichedHistory = recentHistory.map { record ->
+                val base = findMealOptionByHistoryKey(record.key, allOptions)
+                    ?.let { enrichOptionString(it) } ?: record.key
+                "[${formatTimestampForAI(record.timestamp)}] $base"
+            }
+            val enrichedOptions = allOptions.map { enrichOptionString(it) }
+            val stats = computeEatingStats(recentHistory, allOptions)
+            val statsText = AiPrompts.formatEatingStats(stats)
+
+            val result = aiService.analyzeHistory(
+                history = enrichedHistory,
+                options = enrichedOptions,
+                statsText = statsText,
+            ) { chunk ->
+                _aiAnalysisStreamingText.value += chunk
+            }
+            result.fold(
+                onSuccess = {
+                    _aiDietAnalysis.value = it
+                    _aiAnalysisStreamingText.value = ""
+                },
+                onFailure = { _message.value = "AI 分析失败：${it.message ?: "未知错误"}" },
+            )
+            _aiAnalysisLoading.value = false
+        }
+    }
+
+    fun recordFromAiRecommend(item: AiRecommendItem) {
+        val option = findMealOptionByName(
+            item.cafeteria, item.floor, item.meal,
+        )
+        if (option != null) {
+            chooseDrawOption(option)
+            _message.value = "已记录：${item.cafeteria} · ${item.meal}"
+        } else {
+            viewModelScope.launch {
+                val historyKey = "${item.cafeteria} > ${item.floor} > ${item.meal}"
+                val result = DecisionResult(
+                    cafeteria = item.cafeteria,
+                    floor = item.floor,
+                    meal = item.meal,
+                    timestamp = System.currentTimeMillis(),
+                    mode = DecisionMode.DRAW,
+                    historyKey = historyKey,
+                )
+                _decisionResult.value = result
+                val maxWindow = settings.first().recentWindowSize.coerceAtLeast(1)
+                settingsStore.appendHistoryKey(historyKey, maxWindow)
+                _message.value = "已记录：${item.cafeteria} · ${item.meal}"
+            }
+        }
+    }
+
+    private fun enrichOptionString(option: MealOption): String {
+        val parts = mutableListOf<String>()
+        if (option.mealTags.isNotBlank()) parts.add(option.mealTags.trim())
+        if (option.mealFlavor.isNotBlank()) parts.add(option.mealFlavor.trim())
+        if (option.mealPriceYuan != null) parts.add("¥${option.mealPriceYuan}")
+        val meta = if (parts.isNotEmpty()) " | ${parts.joinToString(" | ")}" else ""
+        return "${option.cafeteriaName} > ${option.floorName} > ${option.mealName}$meta"
+    }
+
+    private fun findMealOptionByHistoryKey(
+        key: String,
+        allOptions: List<MealOption>,
+    ): MealOption? = allOptions.firstOrNull {
+        "${it.cafeteriaName} > ${it.floorName} > ${it.mealName}" == key
+    }
+
+    private fun findMealOptionByName(
+        cafeteria: String,
+        floor: String,
+        meal: String,
+    ): MealOption? = enabledOptions.value.firstOrNull {
+        it.cafeteriaName == cafeteria && it.floorName == floor && it.mealName == meal
+    }
+
+    private fun computeEatingStats(
+        history: List<HistoryRecord>,
+        allOptions: List<MealOption>,
+    ): UserEatingStats {
+        val enriched = history.mapNotNull { record ->
+            findMealOptionByHistoryKey(record.key, allOptions)?.let { record.key to it }
+        }
+        if (enriched.isEmpty()) return UserEatingStats()
+
+        val cafeteriaFreq = enriched.groupBy { it.second.cafeteriaName }
+            .mapValues { it.value.size }
+        val tagFreq = enriched.map { it.second.mealTags.trim() }
+            .filter { it.isNotBlank() }
+            .groupBy { it }.mapValues { it.value.size }
+        val flavorFreq = enriched.map { it.second.mealFlavor.trim() }
+            .filter { it.isNotBlank() }
+            .groupBy { it }.mapValues { it.value.size }
+        val prices = enriched.mapNotNull { it.second.mealPriceYuan }
+        val avgSpend = if (prices.isNotEmpty()) prices.sum() / prices.size else null
+
+        val recentTags = enriched.take(5).map { it.second.mealTags.trim() }.filter { it.isNotBlank() }
+        val consecutiveTags = if (recentTags.size >= 3 && recentTags.take(3).distinct().size == 1) {
+            "最近${recentTags.takeWhile { it == recentTags.first() }.size}天连续吃${recentTags.first()}"
+        } else null
+
+        val timeDistribution = computeTimeDistribution(history)
+
+        return UserEatingStats(
+            totalRecords = enriched.size,
+            cafeteriaFreq = cafeteriaFreq,
+            tagFreq = tagFreq,
+            flavorFreq = flavorFreq,
+            avgSpendYuan = avgSpend,
+            consecutiveTags = consecutiveTags,
+            timeDistribution = timeDistribution,
+        )
+    }
+
+    private fun computeTimeDistribution(history: List<HistoryRecord>): Map<String, Int> {
+        val result = mutableMapOf<String, Int>()
+        history.forEach { record ->
+            if (record.timestamp == 0L) return@forEach
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = record.timestamp }
+            val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+            val period = when (hour) {
+                in 6..10 -> "早餐"
+                in 11..14 -> "午餐"
+                in 17..21 -> "晚餐"
+                in 22..23, in 0..5 -> "夜宵"
+                else -> "其他"
+            }
+            result[period] = (result[period] ?: 0) + 1
+        }
+        return result
+    }
+
+    fun deleteHistoryRecord(index: Int) {
+        viewModelScope.launch {
+            settingsStore.deleteHistoryRecord(index)
+        }
+    }
+
+    fun updateHistoryRecord(index: Int, newKey: String, newTimestamp: Long) {
+        viewModelScope.launch {
+            settingsStore.updateHistoryRecord(index, newKey, newTimestamp)
+        }
+    }
+
+    fun consumeAiSmartRecommendResult() {
+        _aiSmartRecommendResult.value = null
+    }
+
+    fun consumeAiSearchResult() {
+        _aiSearchResult.value = null
+    }
+
+    fun consumeAiDietAnalysis() {
+        _aiDietAnalysis.value = null
     }
 }
